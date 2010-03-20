@@ -10,6 +10,7 @@ Lexical:
   - arithmetic expansions
   + line continuations
   - here-docs
+  - back-ticks
 
 Syntactical:
   + simple commands
