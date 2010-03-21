@@ -211,7 +211,7 @@ substitution = do
 -- A word consisting solely of underscores, digits, and alphabetics from the
 -- portable character set. The first character of a name is not a digit. 
 name :: Parser Name
-name = token $ do
+name = do
     first <- underscore <|> letter
     rest <- many $ underscore <|> letter <|> digit
     return $ first:rest
@@ -219,6 +219,9 @@ name = token $ do
     -- portable character set
     letter = satisfy $ \x -> (x >= 'a' && x <= 'z') || (x >= 'A' && x <= 'Z')
     underscore = char '_'
+
+token_name :: Parser Name
+token_name = token name
 
 parameterSubst :: Parser ParSubstExpr
 parameterSubst = do
@@ -401,7 +404,7 @@ pipeline = do
 
 functionDefinition :: Parser FunctionDefinition
 functionDefinition = ifNotReserved $ do
-    fname <- name
+    fname <- token_name
     string "()"
     linebreak
     (body,redirs) <- compoundCommand
@@ -466,7 +469,7 @@ doGroup = between (theReservedWord "do") (theReservedWord "done") compoundList
 
 forClause = do
     theReservedWord "for"
-    var <- name
+    var <- token_name
     linebreak
     words <- optionMaybe wordlist
     do_group <- doGroup
