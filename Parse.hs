@@ -69,7 +69,7 @@ data Assignment = Assignment Name Word
     deriving Show
 
 data Command = ComSimple SimpleCommand
-             | ComCompound CompoundCommand 
+             | ComCompound CompoundCommand [Redirection]
              | ComFunction FunctionDefinition
     deriving Show
 data FunctionDefinition =
@@ -404,12 +404,12 @@ functionDefinition = ifNotReserved $ do
     fname <- name
     string "()"
     linebreak
-    body <- compoundCommand
-    redirect <- many redirection
-    return $ FunctionDefinition fname body redirect
+    (body,redirs) <- compoundCommand
+    return $ FunctionDefinition fname body redirs
 
+command :: Parser Command
 command = try $ fmap ComFunction functionDefinition
-      <|> fmap ComCompound compoundCommand
+      <|> fmap (uncurry ComCompound) compoundCommand
       <|> fmap ComSimple simpleCommand
       
 
@@ -444,15 +444,19 @@ list = do
 
 compoundList = list
 
-compoundCommand = choice $
-    [ braceGroup
-    , subShell
-    , forClause
-    , ifClause
-    , whileClause
-    , untilClause
-    , caseClause
-    ]
+compoundCommand :: Parser (CompoundCommand, [Redirection])
+compoundCommand = do
+    cmd <- choice
+        [ braceGroup
+        , subShell
+        , forClause
+        , ifClause
+        , whileClause
+        , untilClause
+        , caseClause
+        ]
+    redirs <- many redirection
+    return (cmd, redirs)
 
 braceGroup = fmap BraceGroup $ between (theReservedWord "{") (theReservedWord "}") compoundList
 
