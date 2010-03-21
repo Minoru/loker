@@ -305,13 +305,6 @@ separated1 p = do
     optional whiteSpace
     sepEndBy1 p (optional whiteSpace)
 
-{-
-tokens :: Parser [Token]
-tokens = do
-    optional whiteSpace
-    sepEndBy (fmap Word token_word <|> operator) (optional whiteSpace)
--}
-
 token_word = token $ word ("'\"`$\\\n# " ++ opFirstLetters) False
 
 --- Syntax ---
@@ -564,10 +557,6 @@ caseClause = do
 
 main = do
     s <- getContents
-    --print $ parse tokens "" s
-    --print $ parse simpleCommand "" s
-    --print $ parse andOrList "" s
-    --print $ parse functionDefinition "" s
     print $ parse (do l <- list; eof; return l) "" s
 
 --- Misc ---
