@@ -118,15 +118,20 @@ bareWord terminators = do
     ordinarySymbol = noneOf terminators
 
 escaped :: Parser WordPart
-escaped = do
+escaped = try $ do
     char '\\'
     c <- anyChar
-    return $ Escaped c
+    bq <- asks insideBackQuotes
+    -- if we are inside backquotes, quoted backquotes have special meaning
+    -- (nesting)
+    if c == '`' && bq
+        then parserFail ""
+        else return $ Escaped c
 
 doubleQuoted :: Parser WordPart
 doubleQuoted = do
     dQuote
-    parts <- many $ escaped <|> bare_word <|> substitution
+    parts <- many $ escaped <|> bare_word <|> substitution <|> backquoted
     dQuote
     return $ DQuoted parts
     where
@@ -142,10 +147,33 @@ doubleQuoted = do
         ordinary_symbol = noneOf "$`\\\"" <|>
             do char '\\'; lookAhead (noneOf escapables); return '\\'
 
+backquoted = do
+    RS { insideBackQuotes = alreadyInsideBackQuotes
+       , insideEscapedBackQuotes = alreadyInsideEscapedBackQuotes }
+        <- ask
+    if not alreadyInsideBackQuotes
+        then enterBackQuotes backQuotes
+        else -- if already inside backquotes,
+             -- try to parse escaped backquotes
+             if not alreadyInsideEscapedBackQuotes
+                then enterEscapedBackQuotes escapedBackQuotes
+                else parserFail ""
+    where
+    backQuotes = do
+        char '`'
+        cmd <- list
+        char '`'
+        return $ CommandSubst cmd
+    escapedBackQuotes = do
+        string "\\`"
+        cmd <- list
+        string "\\`"
+        return $ CommandSubst cmd
+
 word :: String -> Bool -> Parser Word
 word terminators acceptEmpty = do
     (if acceptEmpty then many else many1) $
-        escaped <|> singleQuoted <|> doubleQuoted <|> substitution <|> bareWord terminators
+        escaped <|> singleQuoted <|> doubleQuoted <|> substitution <|> backquoted <|> bareWord terminators
 
 --- Operators ---
 
