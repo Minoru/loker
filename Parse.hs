@@ -126,7 +126,7 @@ escaped = do
 doubleQuoted :: Parser WordPart
 doubleQuoted = do
     dQuote
-    parts <- many1 $ escaped <|> bare_word <|> substitution
+    parts <- many $ escaped <|> bare_word <|> substitution
     dQuote
     return $ DQuoted parts
     where
