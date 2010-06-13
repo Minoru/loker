@@ -2,6 +2,7 @@ module Parsec ( module Orig, module Parsec, ask, asks ) where
 import Text.Parsec as Orig hiding (char,string,Stream,parse,satisfy,oneOf,noneOf)
 import qualified Text.Parsec as Base (char,string,satisfy)
 import Control.Monad.Reader
+import Control.Applicative hiding (many)
 
 type Stream = String
 
@@ -69,3 +70,5 @@ parse p name s = runReader (runPT p () name s) defaultRS
 oneOf cs  = try $ satisfy (\c -> elem c cs)
 noneOf cs = try $ satisfy (\c -> not (elem c cs))
 
+recordPos p =
+    (\p1 d p2 -> d (p1,p2)) <$> getPosition <*> p <*> getPosition

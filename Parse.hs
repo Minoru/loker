@@ -3,6 +3,7 @@ import AST
 import Data.List
 import Data.Maybe
 import Control.Monad
+import Control.Applicative hiding (many,(<|>),optional)
 import Parsec hiding (token,tokens)
 
 singleQuoted :: Parser WordPart
@@ -64,12 +65,12 @@ backquoted = do
                 then enterEscapedBackQuotes escapedBackQuotes
                 else parserFail ""
     where
-    backQuotes = do
+    backQuotes = recordPos $ do
         char '`'
         cmd <- list
         char '`'
         return $ CommandSubst cmd
-    escapedBackQuotes = do
+    escapedBackQuotes = recordPos $ do
         string "\\`"
         cmd <- list
         string "\\`"
@@ -109,9 +110,9 @@ whiteSpace = do many1 $ comment <|> (oneOf " \t" >> return ());
 --- Substitutions ---
 -- Parameter expansion, command substitution or arithmetic expansion
 substitution :: Parser WordPart
-substitution = do
-    char '$'
-    fmap ParSubst parameterSubst <|> fmap CommandSubst commandSubst
+substitution = recordPos $
+    char '$' *>
+    (ParSubst <$> parameterSubst <|> CommandSubst <$> commandSubst)
 
 -- A word consisting solely of underscores, digits, and alphabetics from the
 -- portable character set. The first character of a name is not a digit. 

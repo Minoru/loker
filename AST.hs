@@ -1,4 +1,9 @@
 module AST where
+
+import Text.Parsec.Pos (SourcePos)
+
+type L = (SourcePos, SourcePos)
+
 -- A parameter can be denoted by a name, a number, or one of the special
 -- characters listed in Special Parameters.
 --
@@ -35,8 +40,8 @@ data WordPart = Bare String
                | SQuoted String
                | DQuoted [WordPart]
                | Escaped Char
-               | CommandSubst CompoundList
-               | ParSubst ParSubstExpr
+               | CommandSubst CompoundList L
+               | ParSubst ParSubstExpr L
                | Arith [WordPart]
     deriving Show
 
