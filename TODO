@@ -1,4 +1,5 @@
 * Make parser complete (see FEATURES)
+* Tests
 * Come up with the way to generate decent error messages
   (currently the main problem is due to try-style backtracking)
 * Analysis
