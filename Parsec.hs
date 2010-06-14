@@ -53,6 +53,11 @@ char x = try $ do
     if skiplc
         then do lineConts; Base.char x
         else Base.char x
+
+-- newline needs special treatment because it may be followed by a here-doc
+-- this parser needs to be used everywhere where newline is needed, except
+-- 'lineConts'
+newline = char '\n'
     
 -- if skipLineContinuation is True, line continuation will be skipped before and
 -- inside the string

@@ -85,15 +85,17 @@ word terminators acceptEmpty = do
 
 operator :: Parser String
 operator = token $ do
-    choice $ map (try.string) operatorList
+    choice $ newline_str : map (try.string) operatorList
+    where newline_str = (:[]) <$> newline
 
 theOperator op = try $ do
     op' <- operator
     guard $ op' == op
     return op
 
-operatorList = ["(",")","&&","||",";;","<<",">>","<&",">&","<>","<<-",">|","<",">","&",";","|","\n"]
-opFirstLetters = nub $ map head $ operatorList
+-- we don't include \n to the operatorList because \n has its own special parser
+operatorList = ["(",")","&&","||",";;","<<",">>","<&",">&","<>","<<-",">|","<",">","&",";","|"]
+opFirstLetters = '\n' : (nub . map head) operatorList
 
 --- Comments ---
 
@@ -288,8 +290,8 @@ theReservedWord w = (<?> "reserved word \"" ++ w ++ "\"") $ try $ do
     guard $ w == w'
     return w
 
-linebreak = separated $ char '\n'
-newline_list = separated1 $ char '\n'
+linebreak = separated newline
+newline_list = separated1 $ newline
 sequential_sep = (theOperator ";" >> linebreak) <|> newline_list
 
 pipeline = do
