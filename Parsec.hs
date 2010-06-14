@@ -23,7 +23,28 @@ data RS = RS
 data SS = SS
     { hereDocDelims  :: [String]
     , hereDocs       :: [Stream]
+    , numHereDocs    :: Int
     }
+
+-- returns unique number by which the contents of here-doc may be accessed later
+enqueueHereDoc :: String -> Parser Int
+enqueueHereDoc delim = do
+    ss <- getState
+    let n = numHereDocs ss
+    putState ss { hereDocDelims = hereDocDelims ss ++ [delim], numHereDocs = n + 1 }
+    return n
+
+dequeueHereDoc :: Parser (Maybe String)
+dequeueHereDoc = do
+    ss <- getState
+    case hereDocDelims ss of
+        [] -> return Nothing
+        d:ds -> do
+            putState ss { hereDocDelims = ds }
+            return $ Just d
+
+rememberHereDoc :: Stream -> Parser ()
+rememberHereDoc str = updateState $ \ss -> ss { hereDocs = hereDocs ss ++ [str] }
 
 type Parser = ParsecT Stream SS (Reader RS)
 
@@ -70,7 +91,27 @@ char x = try $ do
 -- newline needs special treatment because it may be followed by a here-doc
 -- this parser needs to be used everywhere where newline is needed, except
 -- 'lineConts'
-newline = char '\n'
+-- todo: more efficient string concatenation
+-- fixme: if here-doc delimeter is not quoted, we also need to parse here-doc
+-- for expansions
+newline = do
+    char '\n'
+    -- check if we need to parse any here-docs
+    tryHereDoc
+    return '\n'
+    where
+    tryHereDoc = maybe (return ()) readHereDoc =<< dequeueHereDoc
+    line = (\s n -> s ++ [n]) <$> many (satisfy (/= '\n')) <*> char '\n'
+    readHereDoc delim = do
+        readHereDoc'
+        tryHereDoc
+        where
+        delim_nl = delim ++ "\n"
+        readHereDoc' = do
+            l <- line
+            if l == delim_nl
+                then return ""
+                else (l ++) <$> readHereDoc'
     
 -- if skipLineContinuation is True, line continuation will be skipped before and
 -- inside the string
@@ -84,7 +125,7 @@ parse p name s = runReader (runPT p emptySS name s) defaultRS
     where defaultRS = RS { skipLineContinuation = True
                          , insideBackQuotes     = False
                          , insideEscapedBackQuotes = False}
-          emptySS = SS [] []
+          emptySS = SS { hereDocs = [], hereDocDelims = [], numHereDocs = 0 }
 
 oneOf cs  = try $ satisfy (\c -> elem c cs)
 noneOf cs = try $ satisfy (\c -> not (elem c cs))

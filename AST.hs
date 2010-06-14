@@ -60,7 +60,7 @@ data Clobber = Clobber | NoClobber
 data RedirectionOp = RedirectInput
                    | RedirectOutput Clobber
                    | AppendOutput
-                   | HereDoc StripHereDoc
+                   | HereDoc StripHereDoc Int
                    | DupInput
                    | DupOutput
                    | ReadWrite

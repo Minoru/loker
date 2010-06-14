@@ -223,8 +223,8 @@ redirOp = do
         "<"  -> RedirectInput
         ">"  -> RedirectOutput NoClobber
         ">|" -> RedirectOutput Clobber
-        "<<" -> HereDoc NoStrip
-        "<<-"-> HereDoc Strip
+        "<<" -> HereDoc NoStrip undefined
+        "<<-"-> HereDoc Strip   undefined
         ">>" -> AppendOutput
         "<&" -> DupInput
         ">&" -> DupOutput
@@ -234,6 +234,7 @@ redirection :: Parser Redirection
 redirection = do
     mbFd <- optionMaybe number
     op <- redirOp
+    -- fixme: if op is HereDoc, we should parse w differently
     w <- token_word
 
     let fd = case mbFd of
@@ -243,11 +244,24 @@ redirection = do
                 AppendOutput     -> 1
                 DupOutput        -> 1
                 RedirectInput    -> 0
-                HereDoc _        -> 0
+                HereDoc _ _      -> 0
                 DupInput         -> 0
                 ReadWrite        -> 0
 
-    return $ Redirection fd op w
+    op' <- case op of
+        HereDoc strip _ -> do
+            i <- enqueueHereDoc (unquote w)
+            return $ HereDoc strip i
+        _ -> return op
+
+    return $ Redirection fd op' w
+    where
+    unquote = concatMap unquote1
+    unquote1 (Bare s) = s
+    unquote1 (SQuoted s) = s
+    unquote1 (DQuoted w) = unquote w
+    unquote1 (Escaped c) = [c]
+    unquote1 _ = error "This type of here-doc delimeter is not yet supported"
 
 assignment = do
     var <- name
