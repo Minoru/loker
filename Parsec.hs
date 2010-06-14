@@ -70,5 +70,7 @@ parse p name s = runReader (runPT p () name s) defaultRS
 oneOf cs  = try $ satisfy (\c -> elem c cs)
 noneOf cs = try $ satisfy (\c -> not (elem c cs))
 
+-- currently the end position is one character after the actual end
+-- this will be fixed at some point by rewriting parser combinators
 recordPos p =
     (\p1 d p2 -> d (p1,p2)) <$> getPosition <*> p <*> getPosition
