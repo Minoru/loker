@@ -45,7 +45,7 @@ doubleQuoted = do
     escapables = "$`\"\\\n"
     escaped = try $ do
         char '\\'
-        fmap Escaped $ oneOf escapables
+        Escaped <$> oneOf escapables
     bare_word = do
         w <- many1 ordinary_symbol
         return $ Bare w
@@ -140,9 +140,9 @@ parameterSubst = do
         try string_length <|> 
         try parameter_check <|> 
         try parameter_substr <|>
-        try (flip ParSubstExpr NoModifier `fmap` parameter)
+        try (flip ParSubstExpr NoModifier <$> parameter)
 
-    parameter = do special <|> positional <|> fmap Var name 
+    parameter = do special <|> positional <|> Var <$> name 
 
     word_arg = word "}'\"`$\\" True
 
@@ -182,18 +182,18 @@ parameterSubst = do
     unbraced = do
         par <- special -- should be the first to capture 0
            <|> simple_positional
-           <|> fmap Var name
+           <|> Var <$> name
         return $ ParSubstExpr par NoModifier
     
-    variable = fmap Var name <?> "variable"
+    variable = Var <$> name <?> "variable"
 
     simple_positional = do
         d <- digit
         return $ Positional $ read [d]
 
-    positional = fmap Positional number
+    positional = Positional <$> number
     
-    special = fmap Special $ oneOf "@*#?-$!0"
+    special = Special <$> oneOf "@*#?-$!0"
 
 commandSubst :: Parser CompoundList
 commandSubst = between (char '(') (char ')') compoundList
@@ -261,9 +261,9 @@ ifNotReserved p = try $ do
 	Nothing -> p
 
 simpleCommand = ifNotReserved $ do
-    cmd_prefix <- separated (fmap add_assignment (try assignment) <|> fmap add_redirection redirection)
-    cmd_word <- fmap maybeToList $ optionMaybe $ fmap add_word token_word
-    cmd_suffix <- separated (try (fmap add_redirection redirection) <|> fmap add_word token_word)
+    cmd_prefix <- separated (add_assignment <$> (try assignment) <|> add_redirection <$> redirection)
+    cmd_word   <- maybeToList <$> optionMaybe (add_word <$> token_word)
+    cmd_suffix <- separated (try (add_redirection <$> redirection) <|> add_word <$> token_word)
 
     let (as,rs,ws) = foldr ($) ([],[],[]) (cmd_prefix ++ cmd_word ++ cmd_suffix)
 
@@ -310,9 +310,9 @@ functionDefinition = ifNotReserved $ do
     return $ FunctionDefinition fname body redirs
 
 command :: Parser Command
-command = try $ fmap ComFunction functionDefinition
-      <|> fmap (uncurry ComCompound) compoundCommand
-      <|> fmap ComSimple simpleCommand
+command = try $ ComFunction <$> functionDefinition
+      <|> (uncurry ComCompound) <$> compoundCommand
+      <|> ComSimple <$> simpleCommand
       
 
 andOrList = do
@@ -360,9 +360,9 @@ compoundCommand = do
     redirs <- many redirection
     return (cmd, redirs)
 
-braceGroup = fmap BraceGroup $ between (theReservedWord "{") (theReservedWord "}") compoundList
+braceGroup = BraceGroup <$> between (theReservedWord "{") (theReservedWord "}") compoundList
 
-subShell = fmap SubShell $ between (theOperator "(") (theOperator ")") compoundList
+subShell = SubShell <$> between (theOperator "(") (theOperator ")") compoundList
 
 doGroup = between (theReservedWord "do") (theReservedWord "done") compoundList
 
@@ -458,7 +458,7 @@ caseClause = do
         ci <- case_item
         case ci of
             Left _ -> return []
-            Right (pat,True) -> fmap (pat:) case_list
+            Right (pat,True) -> (pat:) <$> case_list
             Right (pat,False) -> do theReservedWord "esac"; return [pat]
 
 program = do
