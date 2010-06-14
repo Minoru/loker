@@ -1,18 +1,31 @@
 module Parsec ( module Orig, module Parsec, ask, asks ) where
-import Text.Parsec as Orig hiding (char,string,Stream,parse,satisfy,oneOf,noneOf)
+import Text.Parsec as Orig hiding (char,string,Stream,parse,satisfy,oneOf,noneOf,newline)
 import qualified Text.Parsec as Base (char,string,satisfy)
 import Control.Monad.Reader
 import Control.Applicative hiding (many)
 
 type Stream = String
 
+-- State for Reader Monad
 data RS = RS
     { skipLineContinuation :: Bool
     , insideBackQuotes     :: Bool
     , insideEscapedBackQuotes :: Bool
     }
 
-type Parser = ParsecT Stream () (Reader RS)
+-- State for State Monad
+-- This state is used for parsing here-docs
+-- When we meet here-doc, we put its delimiter into hereDocDelims list.
+-- After each newline we check whether we have unread here-docs, and if so,
+-- start reading them
+-- After the here-doc is read, we remove its delimeter from hereDocDelims and put
+-- the contents of heredoc into the hereDocs list.
+data SS = SS
+    { hereDocDelims  :: [String]
+    , hereDocs       :: [Stream]
+    }
+
+type Parser = ParsecT Stream SS (Reader RS)
 
 lineConts :: Parser ()
 lineConts = do 
@@ -67,10 +80,11 @@ string s = try $ do
     return s
 
 parse :: Parser a -> SourceName -> Stream -> Either ParseError a
-parse p name s = runReader (runPT p () name s) defaultRS
+parse p name s = runReader (runPT p emptySS name s) defaultRS
     where defaultRS = RS { skipLineContinuation = True
                          , insideBackQuotes     = False
                          , insideEscapedBackQuotes = False}
+          emptySS = SS [] []
 
 oneOf cs  = try $ satisfy (\c -> elem c cs)
 noneOf cs = try $ satisfy (\c -> not (elem c cs))
