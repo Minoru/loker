@@ -25,6 +25,7 @@ data SS = SS
     , hereDocs       :: [Stream]
     , numHereDocs    :: Int
     }
+    deriving Show
 
 -- returns unique number by which the contents of here-doc may be accessed later
 enqueueHereDoc :: String -> Parser Int
