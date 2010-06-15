@@ -104,7 +104,7 @@ newline = do
     tryHereDoc = maybe (return ()) readHereDoc =<< dequeueHereDoc
     line = (\s n -> s ++ [n]) <$> many (satisfy (/= '\n')) <*> char '\n'
     readHereDoc delim = do
-        readHereDoc'
+        readHereDoc' >>= rememberHereDoc
         tryHereDoc
         where
         delim_nl = delim ++ "\n"
