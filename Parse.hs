@@ -235,7 +235,9 @@ redirection = do
     mbFd <- optionMaybe number
     op <- redirOp
     -- fixme: if op is HereDoc, we should parse w differently
-    w <- token_word
+    w <- case op of
+        HereDoc {} -> hereDocDelim
+        _ -> token_word
 
     let fd = case mbFd of
             Just fd -> fd
@@ -261,7 +263,28 @@ redirection = do
     unquote1 (SQuoted s) = s
     unquote1 (DQuoted w) = unquote w
     unquote1 (Escaped c) = [c]
-    unquote1 _ = error "This type of here-doc delimeter is not yet supported"
+    unquote1 x = error $ "Got unexpected thingy in here-doc delimeter: " ++ show x
+    hereDocDelim = token $ many1 $
+                escaped <|> singleQuoted <|> doubleQuoted <|> bareWord "'\"\\\n# "
+    doubleQuoted :: Parser WordPart
+    doubleQuoted = do
+        dQuote
+        parts <- many $ escaped <|> bare_word
+        dQuote
+        return $ DQuoted parts
+        where
+        dQuote = char '"'
+        escapables = "$`\"\\\n"
+        escaped = try $ do
+            char '\\'
+            Escaped <$> oneOf escapables
+        bare_word = do
+            w <- many1 ordinary_symbol
+            return $ Bare w
+            where
+            ordinary_symbol = noneOf "\\\"" <|>
+                do char '\\'; lookAhead (noneOf escapables); return '\\'
+
 
 assignment = do
     var <- name
