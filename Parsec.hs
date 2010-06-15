@@ -27,26 +27,6 @@ data SS = SS
     }
     deriving Show
 
--- returns unique number by which the contents of here-doc may be accessed later
-enqueueHereDoc :: String -> Parser Int
-enqueueHereDoc delim = do
-    ss <- getState
-    let n = numHereDocs ss
-    putState ss { hereDocDelims = hereDocDelims ss ++ [delim], numHereDocs = n + 1 }
-    return n
-
-dequeueHereDoc :: Parser (Maybe String)
-dequeueHereDoc = do
-    ss <- getState
-    case hereDocDelims ss of
-        [] -> return Nothing
-        d:ds -> do
-            putState ss { hereDocDelims = ds }
-            return $ Just d
-
-rememberHereDoc :: Stream -> Parser ()
-rememberHereDoc str = updateState $ \ss -> ss { hereDocs = hereDocs ss ++ [str] }
-
 type Parser = ParsecT Stream SS (Reader RS)
 
 lineConts :: Parser ()
@@ -89,31 +69,6 @@ char x = try $ do
         then do lineConts; Base.char x
         else Base.char x
 
--- newline needs special treatment because it may be followed by a here-doc
--- this parser needs to be used everywhere where newline is needed, except
--- 'lineConts'
--- todo: more efficient string concatenation
--- fixme: if here-doc delimeter is not quoted, we also need to parse here-doc
--- for expansions
-newline = do
-    char '\n'
-    -- check if we need to parse any here-docs
-    tryHereDoc
-    return '\n'
-    where
-    tryHereDoc = maybe (return ()) readHereDoc =<< dequeueHereDoc
-    line = (\s n -> s ++ [n]) <$> many (satisfy (/= '\n')) <*> char '\n'
-    readHereDoc delim = do
-        readHereDoc' >>= rememberHereDoc
-        tryHereDoc
-        where
-        delim_nl = delim ++ "\n"
-        readHereDoc' = do
-            l <- line
-            if l == delim_nl
-                then return ""
-                else (l ++) <$> readHereDoc'
-    
 -- if skipLineContinuation is True, line continuation will be skipped before and
 -- inside the string
 string :: String -> Parser String
