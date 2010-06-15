@@ -3,6 +3,8 @@ import Text.Parsec as Orig hiding (char,string,Stream,parse,satisfy,oneOf,noneOf
 import qualified Text.Parsec as Base (char,string,satisfy)
 import Control.Monad.Reader
 import Control.Applicative hiding (many)
+import qualified Data.IntMap as I
+import AST
 
 type Stream = String
 
@@ -21,11 +23,29 @@ data RS = RS
 -- After the here-doc is read, we remove its delimeter from hereDocDelims and put
 -- the contents of heredoc into the hereDocs list.
 data SS = SS
-    { hereDocDelims  :: [String]
-    , hereDocs       :: [Stream]
+    { hereDocHandles :: [HereDocHandle]
+    , hereDocs       :: I.IntMap Word
     , numHereDocs    :: Int
     }
     deriving Show
+type HereDocHandle = (String, Int, HereDocQuoted)
+data HereDocQuoted = HereDocQuoted | HereDocNotQuoted
+    deriving Show
+
+-- put here-docs delimeter into the queue
+-- returns unique number by which the contents of here-doc may be accessed later
+enqueueHereDoc :: String -> HereDocQuoted -> Parser Int
+enqueueHereDoc delim quoted = do
+    ss <- getState
+    let n = numHereDocs ss
+    putState ss { hereDocHandles = (delim,n,quoted) : hereDocHandles ss, numHereDocs = n + 1 }
+    return n
+
+rememberHereDoc :: Int -> Word -> Parser ()
+rememberHereDoc i w = updateState $ \ss -> ss { hereDocs = I.insert i w $ hereDocs ss }
+
+pendingHereDocs :: Parser [HereDocHandle]
+pendingHereDocs = hereDocHandles <$> getState
 
 type Parser = ParsecT Stream SS (Reader RS)
 
@@ -81,7 +101,7 @@ parse p name s = runReader (runPT p emptySS name s) defaultRS
     where defaultRS = RS { skipLineContinuation = True
                          , insideBackQuotes     = False
                          , insideEscapedBackQuotes = False}
-          emptySS = SS { hereDocs = [], hereDocDelims = [], numHereDocs = 0 }
+          emptySS = SS { hereDocs = I.empty, hereDocHandles = [], numHereDocs = 0 }
 
 oneOf cs  = try $ satisfy (\c -> elem c cs)
 noneOf cs = try $ satisfy (\c -> not (elem c cs))

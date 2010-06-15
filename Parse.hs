@@ -92,14 +92,12 @@ word terminators acceptEmpty = do
 newline = do
     char '\n'
     -- check if we need to parse any here-docs
-    tryHereDoc
+    mapM_ readHereDoc . reverse =<< pendingHereDocs
     return '\n'
     where
-    tryHereDoc = maybe (return ()) readHereDoc =<< dequeueHereDoc
     line = (\s n -> s ++ [n]) <$> many (satisfy (/= '\n')) <*> char '\n'
-    readHereDoc delim = do
-        readHereDoc' >>= rememberHereDoc
-        tryHereDoc
+    readHereDoc (delim,i,quoted_) = do
+        ((:[]).SQuoted <$> readHereDoc') >>= rememberHereDoc i
         where
         delim_nl = delim ++ "\n"
         readHereDoc' = do
@@ -107,26 +105,6 @@ newline = do
             if l == delim_nl
                 then return ""
                 else (l ++) <$> readHereDoc'
-
--- returns unique number by which the contents of here-doc may be accessed later
-enqueueHereDoc :: String -> Parser Int
-enqueueHereDoc delim = do
-    ss <- getState
-    let n = numHereDocs ss
-    putState ss { hereDocDelims = hereDocDelims ss ++ [delim], numHereDocs = n + 1 }
-    return n
-
-dequeueHereDoc :: Parser (Maybe String)
-dequeueHereDoc = do
-    ss <- getState
-    case hereDocDelims ss of
-        [] -> return Nothing
-        d:ds -> do
-            putState ss { hereDocDelims = ds }
-            return $ Just d
-
-rememberHereDoc :: Stream -> Parser ()
-rememberHereDoc str = updateState $ \ss -> ss { hereDocs = hereDocs ss ++ [str] }
 
 --- Operators ---
 
@@ -299,7 +277,7 @@ redirection = do
 
     op' <- case op of
         HereDoc strip _ -> do
-            i <- enqueueHereDoc (unquote w)
+            i <- enqueueHereDoc (unquote w) HereDocNotQuoted -- fixme
             return $ HereDoc strip i
         _ -> return op
 
