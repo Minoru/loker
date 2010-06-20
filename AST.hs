@@ -25,14 +25,14 @@ type Name = String
 data Parameter = Var Name
                | Positional Int
                | Special Char
-    deriving Show
+    deriving (Show,Read,Eq)
 
 data SubstringType = Suffix | Prefix
-    deriving Show
+    deriving (Show,Read,Eq)
 data PatternType = Largest | Smallest
-    deriving Show
+    deriving (Show,Read,Eq)
 data CheckType = CheckUnset | CheckUnsetAndNull
-    deriving Show
+    deriving (Show,Read,Eq)
 
 data ParModifier = UseDefault       Word CheckType
                  | AssignDefault    Word CheckType
@@ -41,10 +41,10 @@ data ParModifier = UseDefault       Word CheckType
                  | StringLength
                  | Remove           Word PatternType SubstringType
                  | NoModifier
-    deriving Show
+    deriving (Show,Read,Eq)
 
 data ParSubstExpr = ParSubstExpr Parameter ParModifier
-    deriving Show
+    deriving (Show,Read,Eq)
 
 data WordPart = Bare String
                | SQuoted String
@@ -53,20 +53,20 @@ data WordPart = Bare String
                | CommandSubst CompoundList L
                | ParSubst ParSubstExpr L
                | Arith [WordPart]
-    deriving Show
+    deriving (Show,Read,Eq)
 
 type Word = [WordPart]
 data Token = Word [WordPart]
            | Op String
-    deriving Show
+    deriving (Show,Read,Eq)
 
 data Redirection = Redirection Int RedirectionOp Word
-    deriving Show
+    deriving (Show,Read,Eq)
 
 data StripHereDoc = Strip | NoStrip
-    deriving Show
+    deriving (Show,Read,Eq)
 data Clobber = Clobber | NoClobber
-    deriving Show
+    deriving (Show,Read,Eq)
 data RedirectionOp = RedirectInput
                    | RedirectOutput Clobber
                    | AppendOutput
@@ -74,22 +74,22 @@ data RedirectionOp = RedirectInput
                    | DupInput
                    | DupOutput
                    | ReadWrite
-    deriving Show
+    deriving (Show,Read,Eq)
 
 data Assignment = Assignment Name Word
-    deriving Show
+    deriving (Show,Read,Eq)
 
 data Command = ComSimple SimpleCommand
              | ComCompound CompoundCommand [Redirection]
              | ComFunction FunctionDefinition
-    deriving Show
+    deriving (Show,Read,Eq)
 data FunctionDefinition =
 	FunctionDefinition Name CompoundCommand [Redirection]
-    deriving Show
+    deriving (Show,Read,Eq)
 data SimpleCommand = SimpleCommand [Assignment] [Redirection] [Word]
-    deriving Show
+    deriving (Show,Read,Eq)
 data ForList = ForWords [Word] | ForPositional
-    deriving Show
+    deriving (Show,Read,Eq)
 data CompoundCommand = BraceGroup CompoundList
                      | SubShell CompoundList
                      | For Name ForList CompoundList
@@ -98,16 +98,16 @@ data CompoundCommand = BraceGroup CompoundList
                            (Maybe CompoundList) -- optional 'else'
                      | While CompoundList CompoundList
                      | Until CompoundList CompoundList
-    deriving Show
+    deriving (Show,Read,Eq)
 data PipelineStatus = Straight | Inverted
-    deriving Show
+    deriving (Show,Read,Eq)
 data Pipeline = Pipeline PipelineStatus [Command]
-    deriving Show
+    deriving (Show,Read,Eq)
 data AndOrList = First Pipeline
                | And   Pipeline AndOrList
                | Or    Pipeline AndOrList
-    deriving Show
+    deriving (Show,Read,Eq)
 data ExecutionMode = Seq | Async
-    deriving Show
+    deriving (Show,Read,Eq)
 type CompoundList = [(AndOrList,ExecutionMode)]
 
