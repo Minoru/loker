@@ -1,8 +1,18 @@
 module AST where
 
-import Text.Parsec.Pos (SourcePos)
+import Text.Parsec.Pos
 
-type L = (SourcePos, SourcePos)
+-- We need to redefine SourcePos, since original SourcePos from Parsec does
+-- not have Read instance and we need it for testing purposes
+data Pos = Pos { posName :: String, posLine :: Int, posColumn :: Int }
+    deriving (Eq, Show, Read)
+fromSourcePos :: SourcePos -> Pos
+fromSourcePos sp = Pos
+    { posName = sourceName sp
+    , posLine = sourceLine sp
+    , posColumn = sourceColumn sp
+    }
+type L = (Pos, Pos)
 
 -- A parameter can be denoted by a name, a number, or one of the special
 -- characters listed in Special Parameters.
