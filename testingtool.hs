@@ -1,4 +1,4 @@
-{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE ExistentialQuantification, ScopedTypeVariables #-}
 import Prelude hiding (catch)
 import Control.Applicative
 import Control.Monad
@@ -19,6 +19,8 @@ import Parse
 data Test = forall a. (Show a, Read a, Eq a) =>
     T { testParser :: Parser a, testName :: String }
 
+withState :: Parser a -> Parser (a, SS)
+withState p = (,) <$> p <*> getState
 
 -- the tests
 tests :: [Test]
@@ -28,20 +30,39 @@ tests = [T command "functions"]
 a </> b = a ++ "/" ++ b
 a <.> b = a ++ "." ++ b
 
--- todo: return the error
-test :: Test -> IO Bool
-test (T p name) = do
+data TestResult a = NoTest
+                  | NoGolden
+                  | FailParseTest
+                  | FailParseGolden
+                  | DifferentResults
+                  | OK a
+    deriving Show
+data TestResultIO a = TestResultIO { runtrt :: IO (TestResult a) }
+instance Monad TestResultIO where
+    return x = TestResultIO $ return $ OK x
+    a >>= f = TestResultIO $ do
+        x <- runtrt a
+        case x of
+            OK y -> runtrt $ f y
+            NoTest -> return NoTest
+            NoGolden -> return NoGolden
+            FailParseTest -> return FailParseTest
+            FailParseGolden -> return FailParseGolden
+            DifferentResults -> return DifferentResults
+
+onError :: IO a -> TestResult a -> TestResultIO a
+onError a r = TestResultIO $ (fmap OK $! a) `catch` (\(e :: SomeException) -> return r)
+
+test :: Test -> IO (TestResult ())
+test (T p name) = runtrt $ do
     let inpf  = "tests" </> name <.> "sh"
         outpf = "tests" </> name <.> "sh" <.> "golden"
-    inp <- readFile inpf
-    outString <- readFile outpf
-    mbOutp <- evaluate (Just $! read outString) `catch`
-        \(ErrorCall "Prelude.read: no parse") -> return Nothing
-    return $ case mbOutp of
-        Nothing -> False
-        Just outp -> case parse p inpf inp of
-            Right r -> r == outp
-            Left _ -> False
+    inp <- readFile inpf `onError` NoTest
+    outString <- readFile outpf `onError` NoGolden
+    outp <- evaluate (read outString) `onError` FailParseGolden
+    TestResultIO . return $ case parse p inpf inp of
+            Right r -> if r == outp then OK () else DifferentResults
+            Left _ -> FailParseTest
 
 updateTest :: Test -> IO ()
 updateTest (T p name) = do
@@ -57,10 +78,17 @@ updateTest (T p name) = do
 
 -- runs all the tests in the test suite
 -- todo: print more information
-runTests = forM_ tests $ \t -> do
-    r <- test t
-    unless r $ putStrLn $ "test '" ++ testName t ++ "' failed"
-    
+runTests = do
+    results <- forM tests $ \t -> do
+        r <- test t
+        case r of
+            OK _ -> return True
+            e -> do
+                putStrLn $ "test '" ++ testName t ++ "' failed: " ++ show e
+                return False
+    putStrLn $ "Successfully run " ++ show (length $ filter id results)
+        ++ " out of " ++ show (length tests) ++ " tests"
+
 -- lists all the tests in the test suite
 listTests = putStr $ unlines $ map testName tests
 
