@@ -27,10 +27,10 @@ data SS = SS
     , hereDocs       :: I.IntMap Word
     , numHereDocs    :: Int
     }
-    deriving Show
+    deriving (Show,Read,Eq)
 type HereDocHandle = (String, Int, HereDocQuoted)
 data HereDocQuoted = HereDocQuoted | HereDocNotQuoted
-    deriving Show
+    deriving (Show,Read,Eq)
 
 -- put here-docs delimeter into the queue
 -- returns unique number by which the contents of here-doc may be accessed later
