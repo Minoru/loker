@@ -24,7 +24,10 @@ withState p = (,) <$> p <*> getState
 
 -- the tests
 tests :: [Test]
-tests = [T command "functions"]
+tests = [T command "functions"
+        ,T (withState program) "heredoc"
+        ,T (withState program) "heredoc-quoted"
+        ]
 
 
 a </> b = a ++ "/" ++ b

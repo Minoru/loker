@@ -1,0 +1,1 @@
+([(First (Pipeline Straight [ComSimple (SimpleCommand [] [Redirection 0 (HereDoc NoStrip 0) [SQuoted "EOF"]] [[Bare "cat"]])]),Seq)],SS {hereDocHandles = [("EOF",0,HereDocNotQuoted)], hereDocs = fromList [(0,[SQuoted "hello\n"])], numHereDocs = 1})
