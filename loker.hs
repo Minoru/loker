@@ -15,5 +15,5 @@ main = do
             return (p,s)
     let res = parse program_and_state (if null args then "" else head args) s
     case res of
-        Right s -> do print s; exitSuccess
+        Right s -> do print s; exitWith ExitSuccess
         Left m  -> do print m; exitFailure
