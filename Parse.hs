@@ -87,7 +87,7 @@ word terminators acceptEmpty = do
 -- this parser needs to be used everywhere where newline is needed, except
 -- 'lineConts'
 -- todo: more efficient string concatenation
--- fixme: if here-doc delimeter is not quoted, we also need to parse here-doc
+-- fixme: if here-doc delimiter is not quoted, we also need to parse here-doc
 -- for expansions
 newline = do
     char '\n'
@@ -288,7 +288,7 @@ redirection = do
     unquote1 (SQuoted s) = s
     unquote1 (DQuoted w) = unquote w
     unquote1 (Escaped c) = [c]
-    unquote1 x = error $ "Got unexpected thingy in here-doc delimeter: " ++ show x
+    unquote1 x = error $ "Got unexpected thingy in here-doc delimiter: " ++ show x
     hereDocDelim = token $ many1 $
                 escaped <|> singleQuoted <|> doubleQuoted <|> bareWord "'\"\\\n# "
     doubleQuoted :: Parser WordPart

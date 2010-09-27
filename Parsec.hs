@@ -20,7 +20,7 @@ data RS = RS
 -- When we meet here-doc, we put its delimiter into hereDocDelims list.
 -- After each newline we check whether we have unread here-docs, and if so,
 -- start reading them
--- After the here-doc is read, we remove its delimeter from hereDocDelims and put
+-- After the here-doc is read, we remove its delimiter from hereDocDelims and put
 -- the contents of heredoc into the hereDocs list.
 data SS = SS
     { hereDocHandles :: [HereDocHandle]
@@ -32,7 +32,7 @@ type HereDocHandle = (String, Int, HereDocQuoted)
 data HereDocQuoted = HereDocQuoted | HereDocNotQuoted
     deriving (Show,Read,Eq)
 
--- put here-docs delimeter into the queue
+-- put here-docs delimiter into the queue
 -- returns unique number by which the contents of here-doc may be accessed later
 enqueueHereDoc :: String -> HereDocQuoted -> Parser Int
 enqueueHereDoc delim quoted = do
