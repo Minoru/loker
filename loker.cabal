@@ -1,0 +1,20 @@
+cabal-version: >= 1.2
+name: loker
+version: 0.0
+build-type: Simple
+license: MIT
+copyright: Roman Cheplyaka, 2010
+author: Roman Cheplyaka <roma@ro-che.info>
+maintainer: Roman Cheplyaka <roma@ro-che.info>
+stability: experimental
+homepage: http://github.com/feuerbach/loker
+bug-reports: http://github.com/feuerbach/loker/issues
+synopsis: Shell script parser
+tested-with: GHC
+
+Executable loker
+    build-depends: parsec == 3.1.*
+                 , containers == 0.3.*
+                 , base == 4.*
+                 , mtl == 1.1.*
+    main-is: loker.hs
