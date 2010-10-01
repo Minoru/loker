@@ -7,5 +7,9 @@ Loker is:
 
 Loker is in the early stage of development and needs your help!
 
-The Standard is here:
-[http://www.opengroup.org/onlinepubs/009695399/utilities/xcu_chap02.html](http://www.opengroup.org/onlinepubs/009695399/utilities/xcu_chap02.html)
+See also:
+
+* [GitHub repository](http://github.com/feuerbach/loker)
+* [Mailing list](https://groups.google.com/group/loker-sh)
+* [Issues](http://github.com/feuerbach/loker/issues)
+* [The Standard](http://www.opengroup.org/onlinepubs/009695399/utilities/xcu_chap02.html)
