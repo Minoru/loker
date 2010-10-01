@@ -142,7 +142,7 @@ substitution = recordPos $
     (ParSubst <$> parameterSubst <|> CommandSubst <$> commandSubst)
 
 -- A word consisting solely of underscores, digits, and alphabetics from the
--- portable character set. The first character of a name is not a digit. 
+-- portable character set. The first character of a name is not a digit.
 name :: Parser Name
 name = do
     first <- underscore <|> letter
@@ -164,12 +164,12 @@ parameterSubst = do
     rbrace = char '}'
 
     braced = between lbrace rbrace $
-        try string_length <|> 
-        try parameter_check <|> 
+        try string_length <|>
+        try parameter_check <|>
         try parameter_substr <|>
         try (flip ParSubstExpr NoModifier <$> parameter)
 
-    parameter = do special <|> positional <|> Var <$> name 
+    parameter = do special <|> positional <|> Var <$> name
 
     word_arg = word "}'\"`$\\" True
 
@@ -178,13 +178,13 @@ parameterSubst = do
         colon <- optionMaybe $ char ':'
         op <- oneOf "-+=?"
         w <- word_arg
-        
+
         let mod = case op of
              '-' -> UseDefault
              '=' -> AssignDefault
              '+' -> UseAlternative
              '?' -> Assert
-        
+
         let checkType = if isJust colon then CheckUnsetAndNull else CheckUnset
 
         return $ ParSubstExpr par (mod w checkType)
@@ -211,7 +211,7 @@ parameterSubst = do
            <|> simple_positional
            <|> Var <$> name
         return $ ParSubstExpr par NoModifier
-    
+
     variable = Var <$> name <?> "variable"
 
     simple_positional = do
@@ -219,7 +219,7 @@ parameterSubst = do
         return $ Positional $ read [d]
 
     positional = Positional <$> number
-    
+
     special = Special <$> oneOf "@*#?-$!0"
 
 commandSubst :: Parser CompoundList
@@ -286,13 +286,16 @@ redirection = do
     isQuoted _ = HereDocQuoted
 
     unquote = concatMap unquote1
+
     unquote1 (Bare s) = s
     unquote1 (SQuoted s) = s
     unquote1 (DQuoted w) = unquote w
     unquote1 (Escaped c) = [c]
     unquote1 x = error $ "Got unexpected thingy in here-doc delimiter: " ++ show x
+
     hereDocDelim = token $ many1 $
                 escaped <|> singleQuoted <|> doubleQuoted <|> bareWord "'\"\\\n# "
+
     doubleQuoted :: Parser WordPart
     doubleQuoted = do
         dQuote
@@ -379,7 +382,7 @@ command :: Parser Command
 command = try $ ComFunction <$> functionDefinition
       <|> (uncurry ComCompound) <$> compoundCommand
       <|> ComSimple <$> simpleCommand
-      
+
 
 andOrList = do
     p <- pipeline
@@ -492,7 +495,7 @@ caseClause = do
     cl <- case_list
 
     return $ Case w cl
-    
+
     where
     -- case_item:
     --   returns Left () if it parsed "esac",
