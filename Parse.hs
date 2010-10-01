@@ -259,7 +259,6 @@ redirection :: Parser Redirection
 redirection = do
     mbFd <- optionMaybe number
     op <- redirOp
-    -- fixme: if op is HereDoc, we should parse w differently
     w <- case op of
         HereDoc {} -> hereDocDelim
         _ -> token_word
@@ -277,12 +276,15 @@ redirection = do
 
     op' <- case op of
         HereDoc strip _ -> do
-            i <- enqueueHereDoc (unquote w) HereDocNotQuoted -- fixme
+            i <- enqueueHereDoc (unquote w) (isQuoted w)
             return $ HereDoc strip i
         _ -> return op
 
     return $ Redirection fd op' w
     where
+    isQuoted [Bare {}] = HereDocNotQuoted
+    isQuoted _ = HereDocQuoted
+
     unquote = concatMap unquote1
     unquote1 (Bare s) = s
     unquote1 (SQuoted s) = s
