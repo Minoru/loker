@@ -25,8 +25,8 @@ withState p = (,) <$> p <*> getState
 -- the tests
 tests :: [Test]
 tests = [T command "functions"
-        ,T (withState program) "heredoc"
         ,T (withState program) "heredoc-quoted"
+        ,T (withState program) "heredoc-newline-in-delimeter"
         ]
 
 

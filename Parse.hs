@@ -96,15 +96,21 @@ newline = do
     return '\n'
     where
     line = (\s n -> s ++ [n]) <$> many (satisfy (/= '\n')) <*> char '\n'
-    readHereDoc (delim,i,quoted_) = do
+    readHereDoc (delim,i,HereDocQuoted) = do
         ((:[]).SQuoted <$> readHereDoc') >>= rememberHereDoc i
         where
         delim_nl = delim ++ "\n"
-        readHereDoc' = do
+        readHereDoc' =
+            (string delim_nl *> pure "") <|>
+            (++) <$> line <*> readHereDoc'
+            {-
             l <- line
             if l == delim_nl
                 then return ""
                 else (l ++) <$> readHereDoc'
+            -}
+    readHereDoc (delim,i,HereDocNotQuoted) = parserFail "Sorry, non-quoted here docs are not implemented yet"
+
 
 --- Operators ---
 
