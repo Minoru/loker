@@ -1,3 +1,4 @@
+{-# LANGUAGE PatternGuards #-}
 module Parse where
 import AST
 import Data.List
@@ -87,30 +88,45 @@ word terminators acceptEmpty = do
 -- this parser needs to be used everywhere where newline is needed, except
 -- 'lineConts'
 -- todo: more efficient string concatenation
--- fixme: if here-doc delimiter is not quoted, we also need to parse here-doc
--- for expansions
 newline = do
     char '\n'
     -- check if we need to parse any here-docs
     mapM_ readHereDoc . reverse =<< pendingHereDocs
     return '\n'
-    where
-    line = (\s n -> s ++ [n]) <$> many (satisfy (/= '\n')) <*> char '\n'
-    readHereDoc (delim,i,HereDocQuoted) = do
-        ((:[]).SQuoted <$> readHereDoc') >>= rememberHereDoc i
-        where
-        delim_nl = delim ++ "\n"
-        readHereDoc' =
-            (string delim_nl *> pure "") <|>
-            (++) <$> line <*> readHereDoc'
-            {-
-            l <- line
-            if l == delim_nl
-                then return ""
-                else (l ++) <$> readHereDoc'
-            -}
-    readHereDoc (delim,i,HereDocNotQuoted) = parserFail "Sorry, non-quoted here docs are not implemented yet"
 
+readHereDoc (delim,i,isQuoted) = rememberHereDoc i . joinWordParts =<< hereDocLine `manyTill` delim_nl
+    where
+    delim_nl = string $ delim ++ "\n"
+    hereDocLine
+      | HereDocQuoted    <- isQuoted = SQuoted <$> sline
+      | HereDocNotQuoted <- isQuoted = DQuoted <$> dline
+    -- line of quoted here-doc
+    sline = (\s n -> s ++ [n]) <$> many (satisfy (/= '\n')) <*> char '\n'
+    -- line of non-quoted here-doc
+    dline = (\s n -> s ++ [Bare [n]])
+        <$> many (escaped <|> bare_word <|> substitution <|> backquoted)
+        <*> char '\n'
+        where
+        escapables = "$`\\\n"
+        escaped = try $ do
+            char '\\'
+            Escaped <$> oneOf escapables
+        bare_word = do
+            w <- many1 ordinary_symbol
+            return $ Bare w
+            where
+            ordinary_symbol = noneOf "$`\\\n" <|>
+                do char '\\'; lookAhead (noneOf escapables); return '\\'
+
+-- If several contiguous strings in a word are of the same type,
+-- join them
+joinWordParts :: Word -> Word
+joinWordParts (Bare x : Bare y : rest) = joinWordParts $ Bare (x ++ y) : rest
+joinWordParts (SQuoted x : SQuoted y : rest) = joinWordParts $ SQuoted (x ++ y) : rest
+joinWordParts (DQuoted x : DQuoted y : rest) = joinWordParts $ DQuoted (x ++ y) : rest
+joinWordParts (DQuoted x : rest) = DQuoted (joinWordParts x) : joinWordParts rest
+joinWordParts (x : xs) = x : joinWordParts xs
+joinWordParts [] = []
 
 --- Operators ---
 

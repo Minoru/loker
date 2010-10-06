@@ -9,7 +9,7 @@ Lexical:
   + command substitutions
   - arithmetic expansions
   + line continuations
-  - here-docs
+  + here-docs
   + backquotes
 
 Syntactical:
