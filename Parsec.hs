@@ -32,6 +32,9 @@ type HereDocHandle = (String, Int, HereDocQuoted)
 data HereDocQuoted = HereDocQuoted | HereDocNotQuoted
     deriving (Show,Read,Eq)
 
+definedAs :: String -> Parser a -> Parser a
+definedAs = flip (<?>)
+
 -- put here-docs delimiter into the queue
 -- returns unique number by which the contents of here-doc may be accessed later
 enqueueHereDoc :: String -> HereDocQuoted -> Parser Int
@@ -50,7 +53,7 @@ pendingHereDocs = hereDocHandles <$> getState
 type Parser = ParsecT Stream SS (Reader RS)
 
 lineConts :: Parser ()
-lineConts = do 
+lineConts = "line continuation" `definedAs` do
     many $ try $ Base.string "\\\n"
     return ()
 
@@ -92,7 +95,7 @@ char x = try $ do
 -- if skipLineContinuation is True, line continuation will be skipped before and
 -- inside the string
 string :: String -> Parser String
-string s = try $ do
+string s = (s `definedAs`) . try $ do
     sequence $ map char s
     return s
 

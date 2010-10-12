@@ -88,7 +88,7 @@ word terminators acceptEmpty = do
 -- this parser needs to be used everywhere where newline is needed, except
 -- 'lineConts'
 -- todo: more efficient string concatenation
-newline = do
+newline = "newline" `definedAs` do
     char '\n'
     -- check if we need to parse any here-docs
     mapM_ readHereDoc . reverse =<< pendingHereDocs
@@ -147,7 +147,7 @@ opFirstLetters = '\n' : (nub . map head) operatorList
 --- Comments ---
 
 comment :: Parser ()
-comment = do
+comment = "comment" `definedAs` do
     char '#'
     many $ satisfy (/= '\n')
     return ()
@@ -370,11 +370,11 @@ simpleCommand = ifNotReserved $ do
 reservedWords = ["!",  "{", "}", "case", "do", "done", "elif", "else", "esac",
                  "fi", "for", "if", "in", "then", "until", "while"]
 
-reservedWord = try $ do
+reservedWord = ("reserved word" `definedAs`) . try $ do
     [Bare x] <- token_word
     guard $ x `elem` reservedWords
     return $ x
-theReservedWord w = (<?> "reserved word \"" ++ w ++ "\"") $ try $ do
+theReservedWord w = (("reserved word \"" ++ w ++ "\"") `definedAs`) $ try $ do
     w' <- reservedWord
     guard $ w == w'
     return w
