@@ -56,9 +56,6 @@ data WordPart = Bare String
     deriving (Show,Read,Eq)
 
 type Word = [WordPart]
-data Token = Word [WordPart]
-           | Op String
-    deriving (Show,Read,Eq)
 
 data Redirection = Redirection Int RedirectionOp Word
     deriving (Show,Read,Eq)
