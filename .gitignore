@@ -1,6 +1,7 @@
 *.o
 *.hi
 loker
+dist
 *~
 .\#*
 *\#
