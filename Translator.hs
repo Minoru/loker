@@ -20,8 +20,9 @@ runUniqueM m = evalState m 0
 translateAssignment :: Assignment -> UniqueM [Instruction]
 translateAssignment (Assignment name [Bare value]) = do
     i <- newUnique
-    return [Const (UserVariable name i) value]
+    return [IR.Const (UserVariable name i) value]
 
--- simpleCommantToInstructions :: SimpleCommand -> [Instruction]
--- simpleCommantToInstructions (SimpleCommand ax [] []) = parseAssignments ax
---     where 
+translateSimpleCommand :: SimpleCommand -> UniqueM [Instruction]
+translateSimpleCommand (SimpleCommand ax [] [])
+    = liftM concat (mapM translateAssignment ax)
+
