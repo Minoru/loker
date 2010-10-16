@@ -2,16 +2,22 @@ module IR where
 
 -- IR stands for Intermediate Representation
 
-data Value
-    = Variable String  -- ordinary shell variable
-    | Unique   Integer -- once-assigned variable introduced during translation
-    | ExitStatus
-    | Array
+data StringValue
+    = ValVariable Variable
+    | ValExitStatus ExitStatusUnique
 
+data Variable
+    = UserVariable String Int -- ordinary shell variable
+    | InternalVariable InternalVariableUique -- once-assigned variable introduced during translation
+
+data Array = ArrayUnique Int
+
+newtype ExitStatusUnique = ExitStatusUnique Int
+newtype InternalVariableUique = InternalVariableUique Int
 
 data Instruction
     = Execute
-        Value -- (external) command name
+        Variable -- (external) command name
         Array -- positional arguments (starting from argv[1])
     | SpecialBuiltin
         SpecialBuiltin
@@ -19,7 +25,7 @@ data Instruction
     | Builtin
         Builtin
         Array -- positional arguments
-    | Assignment
+    | Const
 
 data SpecialBuiltin
     = Break | Colon | Continue | Dot | Eval | Exec | Exit | Export
