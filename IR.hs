@@ -8,12 +8,12 @@ data StringValue
 
 data Variable
     = UserVariable String Int -- ordinary shell variable
-    | InternalVariable InternalVariableUique -- once-assigned variable introduced during translation
+    | InternalVariable InternalVariableUnique -- once-assigned variable introduced during translation
 
 data Array = ArrayUnique Int
 
 newtype ExitStatusUnique = ExitStatusUnique Int
-newtype InternalVariableUique = InternalVariableUique Int
+newtype InternalVariableUnique = InternalVariableUnique Int
 
 data Instruction
     = Execute
@@ -26,6 +26,16 @@ data Instruction
         Builtin
         Array -- positional arguments
     | Const
+        Variable
+        String
+    | Concat
+        Variable
+        Variable
+        Variable 
+    | If
+        ExitStatusUnique
+        Instruction
+        Instruction  
 
 data SpecialBuiltin
     = Break | Colon | Continue | Dot | Eval | Exec | Exit | Export
@@ -35,4 +45,4 @@ data Builtin
     = Alias | Bg | Cd | Command | False | Fc | Fg | Getopts | Jobs
     | Kill | Newgrp | Pwd | Read | True | Umask | Unalias | Wait
 
-
+data Script = [Instruction]
