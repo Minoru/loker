@@ -77,7 +77,7 @@ enterEscapedBackQuotes p = do
 -- if skipLineContinuation is True, line continuation will be skipped /before/
 -- the char
 satisfy :: (Char -> Bool) -> Parser Char
-satisfy f = try $ do
+satisfy f = do
     skiplc <- asks skipLineContinuation
     if skiplc
         then do lineConts; Base.satisfy f

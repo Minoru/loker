@@ -401,7 +401,7 @@ functionDefinition = ifNotReserved $ do
     return $ FunctionDefinition fname body redirs
 
 command :: Parser Command
-command = try $ ComFunction <$> functionDefinition
+command = ComFunction <$> functionDefinition
       <|> (uncurry ComCompound) <$> compoundCommand
       <|> ComSimple <$> simpleCommand
 
