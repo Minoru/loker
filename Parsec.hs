@@ -83,14 +83,8 @@ satisfy f = try $ do
         then do lineConts; Base.satisfy f
         else Base.satisfy f
 
--- if skipLineContinuation is True, line continuation will be skipped /before/
--- the char
 char :: Char -> Parser Char
-char x = try $ do
-    skiplc <- asks skipLineContinuation
-    if skiplc
-        then do lineConts; Base.char x
-        else Base.char x
+char = satisfy . (==)
 
 -- if skipLineContinuation is True, line continuation will be skipped before and
 -- inside the string
