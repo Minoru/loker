@@ -35,3 +35,8 @@ translateParameter :: Parameter -> UniqueM Variable
 translateParameter (Var name) = do
   i <- newVarVersion name
   return (UserVariable name i)
+
+translateParSubstExpr :: ParSubstExpr -> UniqueM ([Instruction], Variable)
+translateParSubstExpr (ParSubstExpr parametr NoModifier) = do
+  var <- translateParameter parametr
+  return ([],var)
