@@ -6,6 +6,7 @@ import IR
 
 import Control.Monad.State
 import qualified Data.Map as M
+import Data.List
 
 type UniqueM = State (M.Map String Int)
 
@@ -26,6 +27,26 @@ translateAssignment :: Assignment -> UniqueM [Instruction]
 translateAssignment (Assignment name [Bare value]) = do
     i <- newVarVersion name
     return [IR.Const (UserVariable name 0) value]
+
+optimizeWord :: Word -> Word    -- concatenate consecutive Bare, SQuoted, Escaped to one Bare string
+optimizeWord ws = map concatWordParts groups
+    where groups = groupBy (\ x y -> concatenable x && concatenable y) ws
+
+          concatenable :: WordPart -> Bool
+          concatenable (Bare x) = True
+          concatenable (SQuoted x) = True
+          concatenable (Escaped x) = True
+          concatenable _ = False
+
+          extractString :: WordPart -> String
+          extractString (Bare s) = s
+          extractString (SQuoted s) = s
+          extractString (Escaped c) = [c]
+
+          concatWordParts :: [WordPart] -> WordPart
+          concatWordParts [DQuoted ws] = DQuoted (optimizeWord ws)
+          concatWordParts [x] = x
+          concatWordParts ws = Bare (concat (map extractString ws))
 
 translateSimpleCommand :: SimpleCommand -> UniqueM [Instruction]
 translateSimpleCommand (SimpleCommand ax [] [])
