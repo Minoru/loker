@@ -28,27 +28,33 @@ translateAssignment (Assignment name [Bare value]) = do
     i <- newVarVersion name
     return [IR.Const (UserVariable name 0) value]
 
-optimizeWord :: Word -> Word    -- concatenate consecutive Bare, SQuoted, Escaped to one Bare string
-optimizeWord ws = map concatWordParts groups
-    where groups = groupBy (\ x y -> concatenable x && concatenable y) ws
+-- the result of optimizeWord is a word with the following properties:
+-- 1. there are no SQuoted or Escaped word parts
+-- 2. each DQuoted string contains exactly one word part and that part
+-- is a substitution (command, parameter or arithmetic)
+-- 3. there are no consequtive Bare parts
+optimizeWord :: Word -> Word
+optimizeWord = concatBares . constToBare . flattenWord
 
-          concatenable :: WordPart -> Bool
-          concatenable (Bare x) = True
-          concatenable (SQuoted x) = True
-          concatenable (Escaped x) = True
-          concatenable (DQuoted ws) = and (map concatenable ws)
-          concatenable _ = False
+flattenWord :: Word -> Word
+flattenWord = concatMap f
+  where
+    f (DQuoted ws) = map (\x -> DQuoted [x]) ws
+    f x = [x]
 
-          extractString :: WordPart -> String
-          extractString (Bare s) = s
-          extractString (SQuoted s) = s
-          extractString (Escaped c) = [c]
-          extractString (DQuoted ws) = extractString (concatWordParts ws)
+constToBare :: Word -> Word
+constToBare = map f
+  where
+    f (DQuoted [x@Bare{}]) = x
+    f (SQuoted s) = Bare s
+    f (Escaped c) = Bare [c]
+    f x = x
 
-          concatWordParts :: [WordPart] -> WordPart
-          concatWordParts [DQuoted ws] = DQuoted (optimizeWord ws)
-          concatWordParts [x] = x
-          concatWordParts ws = Bare (concat (map extractString ws))
+concatBares :: Word -> Word
+concatBares [] = []
+concatBares [x] = [x]
+concatBares (Bare s1 : Bare s2 : rest) = Bare (s1 ++ s2) : concatBares rest
+concatBares (a:rest) = a:concatBares rest
 
 translateSimpleCommand :: SimpleCommand -> UniqueM [Instruction]
 translateSimpleCommand (SimpleCommand ax [] [])
