@@ -57,7 +57,8 @@ lineConts = "line continuation" `definedAs` do
     many $ try $ Base.string "\\\n"
     return ()
 
-dontSkipLineConts p = do
+-- NB: need 'try' here because of line continuation
+dontSkipLineConts p = try $ do
     -- skip line conts before, do not skip inside
     lineConts
     local dontSkip p
@@ -76,8 +77,9 @@ enterEscapedBackQuotes p = do
 
 -- if skipLineContinuation is True, line continuation will be skipped /before/
 -- the char
+-- NB: need 'try' here because of line continuation
 satisfy :: (Char -> Bool) -> Parser Char
-satisfy f = do
+satisfy f = try $ do
     skiplc <- asks skipLineContinuation
     if skiplc
         then do lineConts; Base.satisfy f
