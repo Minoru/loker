@@ -26,7 +26,7 @@ runUniqueM m = evalState m M.empty
 translateAssignment :: Assignment -> UniqueM [Instruction]
 translateAssignment (Assignment name [Bare value]) = do
     i <- newVarVersion name
-    return [IR.Const (UserVariable name 0) value]
+    return [IR.Const (UserVariable name i) value]
 
 optimizeWord :: Word -> Word    -- concatenate consecutive Bare, SQuoted, Escaped to one Bare string
 optimizeWord ws = map concatWordParts groups
@@ -59,7 +59,30 @@ translateParameter (Var name) = do
   i <- newVarVersion name
   return (UserVariable name i)
 
-translateParSubstExpr :: ParSubstExpr -> UniqueM ([Instruction], Variable)
+translateParSubstExpr :: ParSubstExpr -> UniqueM (Variable, [Instruction])
 translateParSubstExpr (ParSubstExpr parametr NoModifier) = do
   var <- translateParameter parametr
-  return ([],var)
+  return (var, [])
+
+makeConstInstruction :: String -> UniqueM (Variable, [Instruction])
+makeConstInstruction s = do
+  i <- newUniqueNumber
+  let var = InternalVariable (InternalVariableUnique i)
+  return (var, [Const var s])
+
+translateWordPart :: WordPart -> UniqueM (Variable, [Instruction])
+translateWordPart (Bare s) = makeConstInstruction s
+translateWordPart (SQuoted s) = makeConstInstruction s
+translateWordPart (Escaped c) = makeConstInstruction [c]
+translateWordPart (DQuoted ws) = translateWord ws
+translateWordPart (ParSubst e _) = translateParSubstExpr e
+
+translateWord :: Word -> UniqueM (Variable, [Instruction])
+translateWord [] = makeConstInstruction ""
+translateWord [a] = translateWordPart a
+translateWord (w:ws) = do
+  (head_v, head_instr) <- translateWordPart w
+  (rest_v, rest_instr) <- translateWord ws
+  i <- newUniqueNumber
+  let v = InternalVariable (InternalVariableUnique i)
+  return (v, (head_instr ++ rest_instr ++ [Concat v head_v rest_v]))
