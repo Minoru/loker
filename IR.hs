@@ -53,5 +53,3 @@ data Builtin
     = Alias | Bg | Cd | Command | False | Fc | Fg | Getopts | Jobs
     | Kill | Newgrp | Pwd | Read | True | Umask | Unalias | Wait
       deriving (Show,Read,Eq)
-
-type Script = [Instruction]
