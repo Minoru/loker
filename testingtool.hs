@@ -27,6 +27,12 @@ tests :: [Test]
 tests = [T command "functions"
         ,T (withState program) "heredoc-quoted"
         ,T (withState program) "heredoc-newline-in-delimeter"
+
+        ,T simpleCommand       "line-cont"
+        ,T simpleCommand       "line-cont-space"
+        ,T simpleCommand       "line-cont-after-space"
+        ,T token_word          "line-cont-in-dquotes"
+        ,T token_word          "line-cont-in-squotes"
         ]
 
 
