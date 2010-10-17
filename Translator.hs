@@ -36,12 +36,14 @@ optimizeWord ws = map concatWordParts groups
           concatenable (Bare x) = True
           concatenable (SQuoted x) = True
           concatenable (Escaped x) = True
+          concatenable (DQuoted ws) = and (map concatenable ws)
           concatenable _ = False
 
           extractString :: WordPart -> String
           extractString (Bare s) = s
           extractString (SQuoted s) = s
           extractString (Escaped c) = [c]
+          extractString (DQuoted ws) = extractString (concatWordParts ws)
 
           concatWordParts :: [WordPart] -> WordPart
           concatWordParts [DQuoted ws] = DQuoted (optimizeWord ws)
