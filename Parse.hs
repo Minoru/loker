@@ -278,7 +278,7 @@ redirOp = do
         "<>" -> ReadWrite
 
 redirection :: Parser Redirection
-redirection = do
+redirection = try $ do
     mbFd <- optionMaybe number
     op <- redirOp
     w <- case op of
@@ -338,7 +338,7 @@ redirection = do
                 do char '\\'; lookAhead (noneOf escapables); return '\\'
 
 
-assignment = do
+assignment = try $ do
     var <- name
     char '='
     value <- token_word
@@ -352,9 +352,9 @@ ifNotReserved p = try $ do
 	Nothing -> p
 
 simpleCommand = ifNotReserved $ do
-    cmd_prefix <- separated (add_assignment <$> (try assignment) <|> add_redirection <$> redirection)
+    cmd_prefix <- separated $ add_assignment <$> assignment <|> add_redirection <$> redirection
     cmd_word   <- maybeToList <$> optionMaybe (add_word <$> token_word)
-    cmd_suffix <- separated (try (add_redirection <$> redirection) <|> add_word <$> token_word)
+    cmd_suffix <- separated $ add_redirection <$> redirection <|> add_word <$> token_word
 
     let (as,rs,ws) = foldr ($) ([],[],[]) (cmd_prefix ++ cmd_word ++ cmd_suffix)
 
