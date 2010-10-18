@@ -33,6 +33,9 @@ tests = [T command "functions"
         ,T simpleCommand       "line-cont-after-space"
         ,T token_word          "line-cont-in-dquotes"
         ,T token_word          "line-cont-in-squotes"
+
+        ,T doubleQuoted        "escape-dquote"
+        ,T doubleQuoted        "escape-dquote-2"
         ]
 
 

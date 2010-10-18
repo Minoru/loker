@@ -52,7 +52,7 @@ doubleQuoted = do
         return $ Bare w
         where
         ordinary_symbol = noneOf "$`\\\"" <|>
-            do char '\\'; lookAhead (noneOf escapables); return '\\'
+            try (do char '\\'; lookAhead (noneOf escapables); return '\\')
 
 backquoted = do
     RS { insideBackQuotes = alreadyInsideBackQuotes
@@ -116,7 +116,7 @@ readHereDoc (delim,i,isQuoted) = rememberHereDoc i . joinWordParts =<< hereDocLi
             return $ Bare w
             where
             ordinary_symbol = noneOf "$`\\\n" <|>
-                do char '\\'; lookAhead (noneOf escapables); return '\\'
+                try (do char '\\'; lookAhead (noneOf escapables); return '\\')
 
 -- If several contiguous strings in a word are of the same type,
 -- join them
@@ -335,7 +335,7 @@ redirection = try $ do
             return $ Bare w
             where
             ordinary_symbol = noneOf "\\\"" <|>
-                do char '\\'; lookAhead (noneOf escapables); return '\\'
+                try (do char '\\'; lookAhead (noneOf escapables); return '\\')
 
 
 assignment = try $ do
