@@ -52,4 +52,4 @@ See also
 [ml]: https://groups.google.com/group/loker-sh
 [issues]: http://github.com/feuerbach/loker/issues
 [ohloh]: https://www.ohloh.net/p/loker
-[standard]: http://www.opengroup.org/onlinepubs/009695399/utilities/xcu_chap02.html
+[standard]: http://www.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html
