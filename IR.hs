@@ -14,8 +14,7 @@ data Statement
     -- leaves
     | Command
         Array -- argv, including the command name, argv[0]
-        [Assignment] -- assignments local to this command
-    | VarAssignment
+    | Assignment AST.Name Expression
     deriving Show
 
 -- About Globbable and Splittable
@@ -68,8 +67,6 @@ data Array
 
 data Redirection = Redirection Int AST.RedirectionOp Expression
     deriving Show
-data Assignment = Assignment AST.Name Expression
-    deriving Show
 
 ----------------------------------------
 -- Word translation
@@ -120,10 +117,17 @@ translateSimpleCommand (AST.SimpleCommand as rs ws) =
     let assignments  = map translateAssignment as
         redirections = map translateRedirection rs
         args         = ConcatA $ map translateWord ws
-        cmd          = Command args assignments
-    in if null redirections
-        then cmd
-        else ApplyRedirections redirections cmd
+        cmd          = Command args
+        cmdWithAssignments =
+            if null assignments
+                then cmd
+                -- those are local assignments, so introduce a subshell
+                else Subshell $ Sequence $ assignments ++ [cmd]
+        cmdWithAssignmentsAndRedirections =
+            if null redirections
+                then cmdWithAssignments
+                else ApplyRedirections redirections cmdWithAssignments
+    in cmdWithAssignmentsAndRedirections
 
 ----------------------------------------
 -- Simplifications of IR tree
@@ -131,8 +135,10 @@ translateSimpleCommand (AST.SimpleCommand as rs ws) =
 -- todo: replace with attribute grammar, syb-like or something else
 
 simplifyStatement :: Statement -> Statement
-simplifyStatement (Command args as) =
-    Command (simplifyArray args) (map simplifyAssignment as)
+simplifyStatement (Command args) =
+    Command (simplifyArray args)
+simplifyStatement (Assignment name expr) =
+    Assignment name $ fst $ simplifyExpression expr
 simplifyStatement (Sequence [s]) = simplifyStatement s
 simplifyStatement (Sequence ss) = Sequence $ map simplifyStatement ss
 simplifyStatement (ApplyRedirections r s) =
@@ -198,10 +204,6 @@ simplifyExpression x@(ConcatE es) =
             , globbable = any globbable fs
             , mayContainPattern = any mayContainPattern fs}
     in  (ConcatE es', f')
-
-simplifyAssignment :: Assignment -> Assignment
-simplifyAssignment (Assignment name expr) =
-    Assignment name $ fst $ simplifyExpression expr
 
 simplifyRedirection :: Redirection -> Redirection
 simplifyRedirection (Redirection fd op expr) =
