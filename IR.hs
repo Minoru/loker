@@ -18,6 +18,17 @@ data Statement
     | VarAssignment
     deriving Show
 
+-- About Globbable and Splittable
+-- ------------------------------
+-- Since our IR doesn't contain quotes, we lose some information.
+-- In particular, presence of quotes determine whether the part of the word is
+-- subjected to field splitting and filename generation.
+--
+-- To represent this information, we have Splittable and Globbable constructors
+-- of Expression datatype. 'Splittable e' represents an expression (a part of
+-- the word) which is subjected to field splitting, while by default expression
+-- is not. Ditto for Globbable.
+
 data Expression
     = Parameter AST.Parameter
     | ConcatE [Expression]
@@ -26,6 +37,26 @@ data Expression
     | Globbable Expression
     -- todo: arithmetics
     deriving Show
+
+-- Array
+-- -----
+-- 'Array' is actually an array of fields which form simple command.
+-- Not all fields (and even treir number) are known during compile time because
+-- of field splitting and filename generation. That's why we have constructors
+-- Split and Glob, which represent an array which results from applying
+-- apropriate procedure to an expression.
+--
+-- If there is an unquoted parameter substitution, it is subjected both to field
+-- splitting and filename generation. So we need something like (in Haskell
+-- pseudocode)
+--
+--   map Glob (Split expr)
+--
+-- SplitGlob constructor represents exactly this. It seems that there are no
+-- cases when field splitting should occur and filename generation should not,
+-- so Split constructor seems redundant. However, during analysis we may prove
+-- that there are no pattern symbols in the variable, and we then will replace
+-- SplitGlob with a simple Split.
 
 data Array
     = Split Expression
@@ -42,7 +73,7 @@ data Assignment = Assignment AST.Name Expression
 
 ----------------------------------------
 -- Word translation
- 
+
 splitGlobbable :: Expression -> Expression
 splitGlobbable = Globbable . Splittable
 
@@ -57,7 +88,7 @@ translateWord = SplitGlob . ConcatE . map (translateWordPartCtx False)
     -- translateWordPartCtx isQuoted wordPart
     translateWordPartCtx True  (AST.Bare s) = Const s
     translateWordPartCtx False (AST.Bare s) = Globbable $ Const s
-    
+
     translateWordPartCtx _ (AST.SQuoted s) = Const s
 
     translateWordPartCtx _ (AST.DQuoted parts) =
