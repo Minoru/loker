@@ -75,7 +75,7 @@ splitGlobbable :: Expression -> Expression
 splitGlobbable = Globbable . Splittable
 
 translateParSubst :: AST.ParSubstExpr -> Expression
-translateParSubst (AST.ParSubstExpr par modifier_) =
+translateParSubst (AST.ParSubstExpr par _modifier) =
     -- todo: apply modifier
     Parameter par
 
@@ -87,6 +87,8 @@ translateWord = SplitGlob . ConcatE . map (translateWordPartCtx False)
     translateWordPartCtx False (AST.Bare s) = Globbable $ Const s
 
     translateWordPartCtx _ (AST.SQuoted s) = Const s
+
+    translateWordPartCtx _ (AST.Escaped c) = Const [c]
 
     translateWordPartCtx _ (AST.DQuoted parts) =
         ConcatE $ map (translateWordPartCtx True) parts
@@ -100,15 +102,18 @@ translateWordNoSplitGlob = ConcatE . map translateWordNoSplitGlobPart
   where
     translateWordNoSplitGlobPart (AST.Bare s) = Const s
     translateWordNoSplitGlobPart (AST.SQuoted s) = Const s
+    translateWordNoSplitGlobPart (AST.Escaped c) = Const [c]
     translateWordNoSplitGlobPart (AST.DQuoted s) = translateWordNoSplitGlob s
     translateWordNoSplitGlobPart (AST.ParSubst e _) = translateParSubst e
 
 ----------------------------------------
 -- Command translation
 
+translateAssignment :: AST.Assignment -> Statement
 translateAssignment (AST.Assignment name thing) =
     Assignment name $ translateWordNoSplitGlob thing
 
+translateRedirection :: AST.Redirection -> Redirection
 translateRedirection (AST.Redirection fd op word) =
     Redirection fd op $ translateWordNoSplitGlob word
 
@@ -145,6 +150,7 @@ simplifyStatement (ApplyRedirections r s) =
     ApplyRedirections (map simplifyRedirection r) (simplifyStatement s)
 simplifyStatement (Pipeline [s]) = simplifyStatement s
 simplifyStatement (Pipeline ss) = Pipeline $ map simplifyStatement ss
+simplifyStatement (Subshell cmd) = Subshell $ simplifyStatement cmd
 
 simplifyArray :: Array -> Array
 simplifyArray (Split e) =
@@ -165,8 +171,7 @@ simplifyArray (SplitGlob e) =
         Fact { splittable = True,  globbable = False } -> Split e'
         Fact { splittable = False, globbable = False } -> Field e'
 simplifyArray (Field e) =
-    let (e',f) = simplifyExpression e
-    in Field e'
+    Field $ fst $ simplifyExpression e
 simplifyArray (ConcatA [a]) = simplifyArray a
 simplifyArray (ConcatA as) = ConcatA $ map simplifyArray as
 
@@ -188,15 +193,15 @@ simplifyExpression x@Parameter{} = (x, allFalse { mayContainPattern = True })
 simplifyExpression x@(Const e)     = (x, allFalse { mayContainPattern = pat })
   where
     pat = any (`elem` e) "*?["
-simplifyExpression x@(Splittable e) =
+simplifyExpression (Splittable e) =
     let (e',f) = simplifyExpression e
     in  (Splittable e', f { splittable = True })
-simplifyExpression x@(Globbable e) =
+simplifyExpression (Globbable e) =
     let (e',f) = simplifyExpression e
     in if mayContainPattern f
         then (Globbable e', f { globbable = True })
         else (e',           f { globbable = False })
-simplifyExpression x@(ConcatE [e]) = simplifyExpression e
+simplifyExpression (ConcatE [e]) = simplifyExpression e
 simplifyExpression x@(ConcatE es) =
     let (es', fs) = unzip $ map simplifyExpression es
         f' = Fact
