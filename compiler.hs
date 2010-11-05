@@ -21,21 +21,21 @@ genC x = helper "" "" 0 x
         helper defs code n (Sequence _     ) = "#include \"routines.h\"\n" ++
             "int main(){" ++ defs ++ code ++ "}"
 
-        helper defs code n (Command x xs) = "#include \"routines.h\"\n" ++
-            "int main(){" ++ genDefs 0 True (Command x xs) ++
-            genCode 0 True (Command x xs) ++ "}"
+        helper defs code n (Command x) = "#include \"routines.h\"\n" ++
+            "int main(){" ++ genDefs 0 True (Command x) ++
+            genCode 0 True (Command x) ++ "}"
 
         helper _ _ _ _ = ""
 
         countDefs :: Statement -> Int
-        countDefs (Command _ _) = 1
+        countDefs (Command _) = 1
         countDefs _ = 0
 
         genDefs :: Int -> Bool -> Statement -> C
-        genDefs n return (Command (ConcatA x) _) = "const char* cmd" ++ show n ++
+        genDefs n return (Command (ConcatA x)) = "const char* cmd" ++ show n ++
             "[] = { " ++ fromConcatA x ++ "NULL };" ++
             (if return then "int retval;" else "")
-        genDefs n return (Command x _) = "const char* cmd" ++ show n ++
+        genDefs n return (Command x) = "const char* cmd" ++ show n ++
             "[] = { " ++ fromArray x ++ "NULL };" ++
             (if return then "int retval;" else "")
         genDefs n return x = "\n\ngenDefs: Nothing is generated for the following IR: " ++ show x ++ "\n\n"
@@ -55,10 +55,10 @@ genC x = helper "" "" 0 x
         fromExpression x         = "\n\nfromExpression: Nothing is generated for the following IR: " ++ show x ++ "\n\n"
 
         genCode :: Int -> Bool -> Statement -> C
-        genCode n return (Command (ConcatA x) _) = (if return then "retval="
+        genCode n return (Command (ConcatA x)) = (if return then "retval="
             else "") ++ "exec_command (cmd" ++ show n ++ ");" ++
             (if return then "return retval;" else "")
-        genCode n return (Command x _) = (if return then "retval=" else "") ++
+        genCode n return (Command x) = (if return then "retval=" else "") ++
             "exec_command (cmd" ++ show n ++ ");" ++
             (if return then "return retval;" else "")
         genCode n return x = "\n\ngenCode: Nothing is generated for the following IR: " ++ show x ++ "\n\n"
