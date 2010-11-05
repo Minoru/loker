@@ -38,21 +38,21 @@ genC x = helper "" "" 0 x
         genDefs n return (Command x) = "const char* cmd" ++ show n ++
             "[] = { " ++ fromArray x ++ "NULL };" ++
             (if return then "int retval;" else "")
-        genDefs n return x = "\n\ngenDefs: Nothing is generated for the following IR: " ++ show x ++ "\n\n"
+        genDefs n return x = error "genDefs: Nothing is generated for the following IR: " ++ show x
 
         fromConcatA :: [Array] -> C
         fromConcatA ((Field x):[]) = "\"" ++ fromExpression x ++ "\", "
         fromConcatA ((Field x):xs) = "\"" ++ fromExpression x ++ "\", " ++
             fromConcatA xs
-        fromConcatA x         = "\n\nfromConcatA: Nothing is generated for the following IR: " ++ show x ++ "\n\n"
+        fromConcatA x = error "fromConcatA: Nothing is generated for the following IR: " ++ show x
 
         fromArray :: Array -> C
         fromArray (Field x) = "\"" ++ fromExpression x ++ "\", "
-        fromArray x = "\n\nfromArray: Nothing is generated for the following IR: " ++ show x ++ "\n\n"
+        fromArray x = "fromArray: Nothing is generated for the following IR: " ++ show x
 
         fromExpression :: Expression -> C
         fromExpression (Const x) = x
-        fromExpression x         = "\n\nfromExpression: Nothing is generated for the following IR: " ++ show x ++ "\n\n"
+        fromExpression x = error "fromExpression: Nothing is generated for the following IR: " ++ show x
 
         genCode :: Int -> Bool -> Statement -> C
         genCode n return (Command (ConcatA x)) = (if return then "retval="
@@ -61,7 +61,7 @@ genC x = helper "" "" 0 x
         genCode n return (Command x) = (if return then "retval=" else "") ++
             "exec_command (cmd" ++ show n ++ ");" ++
             (if return then "return retval;" else "")
-        genCode n return x = "\n\ngenCode: Nothing is generated for the following IR: " ++ show x ++ "\n\n"
+        genCode n return x = error "genCode: Nothing is generated for the following IR: " ++ show x
 
 main = do
     args <- getArgs
