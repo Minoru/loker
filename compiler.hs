@@ -48,7 +48,7 @@ genC x = helper "" "" 0 x
 
         fromArray :: Array -> C
         fromArray (Field x) = "\"" ++ fromExpression x ++ "\", "
-        fromArray x = "fromArray: Nothing is generated for the following IR: " ++ show x
+        fromArray x = error "fromArray: Nothing is generated for the following IR: " ++ show x
 
         fromExpression :: Expression -> C
         fromExpression (Const x) = x
