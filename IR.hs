@@ -213,3 +213,14 @@ simplifyExpression x@(ConcatE es) =
 simplifyRedirection :: Redirection -> Redirection
 simplifyRedirection (Redirection fd op expr) =
     Redirection fd op $ fst $ simplifyExpression expr
+
+
+isArrayConstant :: Array -> Maybe ([String])
+isArrayConstant (ConcatA ars) = fmap concat $ mapM isArrayConstant ars
+isArrayConstant (Field expr) = fmap (:[]) $ isExprConstant expr
+isArrayConstant _ = Nothing
+
+isExprConstant :: Expression -> Maybe String
+isExprConstant (ConcatE exprs) = fmap concat $ mapM isExprConstant exprs
+isExprConstant (Const s) = Just s
+isExprConstant _ = Nothing
