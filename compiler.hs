@@ -79,4 +79,5 @@ compile ir = do
     hPutStr h (genC ir)
     hClose h
 
-    rawSystem "gcc" ["-Wall", fn]
+    rawSystem "gcc" ["-Wall", "-c", "routines.c", "-o", "routines.o"]
+    rawSystem "gcc" ["-Wall", "routines.o", fn]
