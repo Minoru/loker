@@ -6,6 +6,7 @@ import System.Environment
 import System.Posix.Temp
 import System.IO
 import System.Process
+import System.Directory
 
 
 type C = String
@@ -74,10 +75,10 @@ main = do
         Right ast -> compile $ simplifyStatement $ translateSimpleCommand ast
 
 compile ir = do
-    let fn = "prog.c"
-    h <- openFile fn WriteMode -- todo: create a proper temp file
-    hPutStr h (genC ir)
-    hClose h
+    (filename, handle) <- openTempFile "." "prog.c"
+    hPutStr handle (genC ir)
+    hClose handle
 
     rawSystem "gcc" ["-Wall", "-c", "routines.c", "-o", "routines.o"]
-    rawSystem "gcc" ["-Wall", "routines.o", fn]
+    rawSystem "gcc" ["-Wall", "routines.o", filename]
+    removeFile filename
