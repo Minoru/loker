@@ -7,6 +7,8 @@
 #include <fcntl.h>
 #include <errno.h>
 
+#include "routines.h"
+
 int exec_command(const char* cmd[]) {
     /*
      *  Executes specified command
