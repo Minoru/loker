@@ -28,8 +28,8 @@ int exec_command(const char* cmd[]) {
         if(WIFEXITED(retval)) {
             return WEXITSTATUS(retval);
         } else {
-            // killed by signal
-            // return 128+number of signal that teminated our child
+            /* killed by signal
+             * return 128+number of signal that teminated our child */
             return 128 + WTERMSIG(retval);
         }
     } else {
