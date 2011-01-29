@@ -1,5 +1,5 @@
-#ifndef ROUTINES_H
-#define ROUTINES_H
+#ifndef LOKER_ROUTINES_H
+#define LOKER_ROUTINES_H
 
 #include <stddef.h> /* NULL */
 
