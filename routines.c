@@ -63,7 +63,7 @@ int pipeline(int ncmds, char*** cmds) {
      */
     pipe_t *pipes = NULL;
     pid_t *processes = NULL;
-    int i, j, status;
+    int i, j, k, status;
     pid_t pid;
     
     pipes = malloc((ncmds-1) * sizeof(pipe_t));
@@ -73,8 +73,12 @@ int pipeline(int ncmds, char*** cmds) {
     for(i = 0; i < ncmds-1; i++)
         if(pipe(pipes[i]) == -1) {
             for(j = 0; j < i; j++) {
-                close(pipes[i][0]);
-                close(pipes[i][1]);
+                do {
+                    k = close(pipes[i][0]);
+                } while (k == -1 && (errno == EINTR || errno == EIO));
+                do {
+                    k = close(pipes[i][1]);
+                } while (k == -1 && (errno == EINTR || errno == EIO));
             };
             free(pipes);
             free(processes);
@@ -86,8 +90,12 @@ int pipeline(int ncmds, char*** cmds) {
     if(pid == -1) {
         perror("Error in fork():");
         for(i = 0; i < ncmds-1; i++) {
-            close(pipes[i][0]);
-            close(pipes[i][1]);
+            do {
+                k = close(pipes[i][0]);
+            } while (k == -1 && (errno == EINTR || errno == EIO));
+            do {
+                k = close(pipes[i][1]);
+            } while (k == -1 && (errno == EINTR || errno == EIO));
         }
         free(pipes);
         free(processes);
@@ -97,8 +105,12 @@ int pipeline(int ncmds, char*** cmds) {
     } else {
         dup2(pipes[0][1], 1);
         for(i = 0; i < ncmds-1; i++) {
-            close(pipes[i][0]);
-            close(pipes[i][1]);
+            do {
+                k = close(pipes[i][0]);
+            } while (k == -1 && (errno == EINTR || errno == EIO));
+            do {
+                k = close(pipes[i][1]);
+            } while (k == -1 && (errno == EINTR || errno == EIO));
         }
         execvp(cmds[0][0], cmds[0]);
         perror("Error in execvp():");
@@ -118,8 +130,12 @@ int pipeline(int ncmds, char*** cmds) {
         if(pid == -1) {
             perror("Error in fork():");
             for(j = 0; j < ncmds-1; j++) {
-                close(pipes[j][0]);
-                close(pipes[j][1]);
+                do {
+                    k = close(pipes[j][0]);
+                } while (k == -1 && (errno == EINTR || errno == EIO));
+                do {
+                    k = close(pipes[j][1]);
+                } while (k == -1 && (errno == EINTR || errno == EIO));
             }
             free(pipes);
             /* trying to interrupt processes gently */
@@ -136,8 +152,12 @@ int pipeline(int ncmds, char*** cmds) {
             dup2(pipes[i-1][0], 0);
             dup2(pipes[i][1], 1);
             for(j = 0; j < ncmds-1; j++) {
-                close(pipes[j][0]);
-                close(pipes[j][1]);
+                do {
+                    k = close(pipes[j][0]);
+                } while (k == -1 && (errno == EINTR || errno == EIO));
+                do {
+                    k = close(pipes[j][1]);
+                } while (k == -1 && (errno == EINTR || errno == EIO));
             }
             execvp(cmds[i][0], cmds[i]);
             perror("Error in execvp():");
@@ -157,8 +177,12 @@ int pipeline(int ncmds, char*** cmds) {
     if(pid == -1) {
         perror("Error in fork():");
         for(i = 0; i < ncmds-1; i++) {
-            close(pipes[i][0]);
-            close(pipes[i][1]);
+            do {
+                k = close(pipes[i][0]);
+            } while (k == -1 && (errno == EINTR || errno == EIO));
+            do {
+                k = close(pipes[i][1]);
+            } while (k == -1 && (errno == EINTR || errno == EIO));
         }
         free(pipes);
         /* trying to interrupt processes gently */
@@ -174,8 +198,12 @@ int pipeline(int ncmds, char*** cmds) {
     } else {
         dup2(pipes[ncmds-2][0], 0);
         for(i = 0; i < ncmds-1; i++) {
-            close(pipes[i][0]);
-            close(pipes[i][1]);
+            do {
+                k = close(pipes[i][0]);
+            } while (k == -1 && (errno == EINTR || errno == EIO));
+            do {
+                k = close(pipes[i][1]);
+            } while (k == -1 && (errno == EINTR || errno == EIO));
         }
         execvp(cmds[ncmds-1][0], cmds[ncmds-1]);
         perror("Error in execvp():");
@@ -190,8 +218,12 @@ int pipeline(int ncmds, char*** cmds) {
     }
 
     for(i = 0; i < ncmds-1; i++) {
-        close(pipes[i][0]);
-        close(pipes[i][1]);
+        do {
+            k = close(pipes[i][0]);
+        } while (k == -1 && (errno == EINTR || errno == EIO));
+        do {
+            k = close(pipes[i][1]);
+        } while (k == -1 && (errno == EINTR || errno == EIO));
     }
 
     /* waiting for processes to end */ 
