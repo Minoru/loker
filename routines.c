@@ -53,6 +53,9 @@ int exec_command(const char* cmd[]) {
     return 0;
 }
 
+void close_pipelines(int, pipe_t*);
+void kill_processes(int, pid_t*);
+
 int pipeline(int ncmds, char*** cmds) {
     /*
      *  Creates chain of commands connected by pipelines
@@ -61,9 +64,10 @@ int pipeline(int ncmds, char*** cmds) {
      *  signal, 128+signum, or 127 if command not found by execvp(), or 126 if
      *  fork() or execvp() failed
      */
+
     pipe_t *pipes = NULL;
     pid_t *processes = NULL;
-    int i, j, k, status;
+    int i, status;
     pid_t pid;
     
     pipes = malloc((ncmds-1) * sizeof(pipe_t));
@@ -72,14 +76,7 @@ int pipeline(int ncmds, char*** cmds) {
     /* create ncmds-1 pipes */
     for(i = 0; i < ncmds-1; i++)
         if(pipe(pipes[i]) == -1) {
-            for(j = 0; j < i; j++) {
-                do {
-                    k = close(pipes[i][0]);
-                } while (k == -1 && (errno == EINTR || errno == EIO));
-                do {
-                    k = close(pipes[i][1]);
-                } while (k == -1 && (errno == EINTR || errno == EIO));
-            };
+            close_pipelines(i, pipes);
             free(pipes);
             free(processes);
             exit(126);
@@ -89,14 +86,7 @@ int pipeline(int ncmds, char*** cmds) {
     pid = fork();
     if(pid == -1) {
         perror("Error in fork():");
-        for(i = 0; i < ncmds-1; i++) {
-            do {
-                k = close(pipes[i][0]);
-            } while (k == -1 && (errno == EINTR || errno == EIO));
-            do {
-                k = close(pipes[i][1]);
-            } while (k == -1 && (errno == EINTR || errno == EIO));
-        }
+        close_pipelines(ncmds-1, pipes);
         free(pipes);
         free(processes);
         exit(126);
@@ -104,14 +94,7 @@ int pipeline(int ncmds, char*** cmds) {
         processes[0] = pid;
     } else {
         dup2(pipes[0][1], 1);
-        for(i = 0; i < ncmds-1; i++) {
-            do {
-                k = close(pipes[i][0]);
-            } while (k == -1 && (errno == EINTR || errno == EIO));
-            do {
-                k = close(pipes[i][1]);
-            } while (k == -1 && (errno == EINTR || errno == EIO));
-        }
+        close_pipelines(ncmds-1, pipes);
         execvp(cmds[0][0], cmds[0]);
         perror("Error in execvp():");
         switch(errno) {
@@ -129,21 +112,9 @@ int pipeline(int ncmds, char*** cmds) {
         pid = fork();
         if(pid == -1) {
             perror("Error in fork():");
-            for(j = 0; j < ncmds-1; j++) {
-                do {
-                    k = close(pipes[j][0]);
-                } while (k == -1 && (errno == EINTR || errno == EIO));
-                do {
-                    k = close(pipes[j][1]);
-                } while (k == -1 && (errno == EINTR || errno == EIO));
-            }
+            close_pipelines(ncmds-1, pipes);
             free(pipes);
-            /* trying to interrupt processes gently */
-            for(j = 0; j < i; j++)
-                kill(processes[j], 15);
-            /* killing everyone that left */
-            for(j = 0; j < i; j++)
-                kill(processes[j], 9);
+            kill_processes(i, processes);
             free(processes);
             exit(126);
         } else if(pid) {
@@ -151,14 +122,7 @@ int pipeline(int ncmds, char*** cmds) {
         } else {
             dup2(pipes[i-1][0], 0);
             dup2(pipes[i][1], 1);
-            for(j = 0; j < ncmds-1; j++) {
-                do {
-                    k = close(pipes[j][0]);
-                } while (k == -1 && (errno == EINTR || errno == EIO));
-                do {
-                    k = close(pipes[j][1]);
-                } while (k == -1 && (errno == EINTR || errno == EIO));
-            }
+            close_pipelines(ncmds-1, pipes);
             execvp(cmds[i][0], cmds[i]);
             perror("Error in execvp():");
             switch(errno) {
@@ -176,35 +140,16 @@ int pipeline(int ncmds, char*** cmds) {
     pid = fork();
     if(pid == -1) {
         perror("Error in fork():");
-        for(i = 0; i < ncmds-1; i++) {
-            do {
-                k = close(pipes[i][0]);
-            } while (k == -1 && (errno == EINTR || errno == EIO));
-            do {
-                k = close(pipes[i][1]);
-            } while (k == -1 && (errno == EINTR || errno == EIO));
-        }
+        close_pipelines(ncmds-1, pipes);
         free(pipes);
-        /* trying to interrupt processes gently */
-        for(i = 0; i < ncmds-1; i++)
-            kill(processes[i], 15);
-        /* killing everyone that left */
-        for(i = 0; i < ncmds-1; i++)
-            kill(processes[i], 9);
+        kill_processes(ncmds-1, processes);
         free(processes);
         exit(126);
     } else if(pid) {
         processes[ncmds-1] = pid;
     } else {
         dup2(pipes[ncmds-2][0], 0);
-        for(i = 0; i < ncmds-1; i++) {
-            do {
-                k = close(pipes[i][0]);
-            } while (k == -1 && (errno == EINTR || errno == EIO));
-            do {
-                k = close(pipes[i][1]);
-            } while (k == -1 && (errno == EINTR || errno == EIO));
-        }
+        close_pipelines(ncmds-1, pipes);
         execvp(cmds[ncmds-1][0], cmds[ncmds-1]);
         perror("Error in execvp():");
         switch(errno) {
@@ -217,14 +162,7 @@ int pipeline(int ncmds, char*** cmds) {
         }
     }
 
-    for(i = 0; i < ncmds-1; i++) {
-        do {
-            k = close(pipes[i][0]);
-        } while (k == -1 && (errno == EINTR || errno == EIO));
-        do {
-            k = close(pipes[i][1]);
-        } while (k == -1 && (errno == EINTR || errno == EIO));
-    }
+    close_pipelines(ncmds-1, pipes);
 
     /* waiting for processes to end */ 
     for(i = 0; i < ncmds-1; i++)
@@ -241,5 +179,46 @@ int pipeline(int ncmds, char*** cmds) {
     else
         /* killed by a signal */
         return 128 + WTERMSIG(status);
+}
+
+
+/* Utility functions */
+void close_pipelines(int n, pipe_t pipes[]) {
+    /*
+     *  Closes given amount of pipelines
+     *
+     * n is amount of pipes to close
+     * pipes is array of them
+     */
+
+    int i, k, ret;
+
+    for(i = 0; i < n; i++) {
+        for(k = 0; k < 2; k++)
+            do {
+                ret = close(pipes[i][k]);
+            } while (ret == -1 && (errno == EINTR || errno == EIO));
+    }
+}
+
+void kill_processes(int n, pid_t processes[]) {
+    /*
+     *  Kills given number of processes
+     *
+     *  n is number of processes to kill
+     *  processes is an array of PIDs
+     */
+
+    int i;
+
+    /* trying to interrupt processes gently */
+    for(i = 0; i < n; i++)
+        kill(processes[i], 15);
+
+    /* TODO: maybe we should use some delay here to let processes die gracefully :) */
+    
+    /* killing everyone that left */
+    for(i = 0; i < n; i++)
+        kill(processes[i], 9);
 }
 
