@@ -53,7 +53,8 @@ int exec_command(const char* cmd[]) {
     return 0;
 }
 
-void close_pipelines(int, pipe_t*);
+void copy_pipe(pipe_t*, pipe_t*);
+void close_pipe(pipe_t);
 void kill_processes(int, pid_t*);
 
 int pipeline(int ncmds, char*** cmds) {
@@ -65,36 +66,31 @@ int pipeline(int ncmds, char*** cmds) {
      *  fork() or execvp() failed
      */
 
-    pipe_t *pipes = NULL;
+    pipe_t in_pipe, out_pipe;
     pid_t *processes = NULL;
     int i, status;
     pid_t pid;
     
-    pipes = malloc((ncmds-1) * sizeof(pipe_t));
     processes = malloc(ncmds * sizeof(pid_t));
 
-    /* create ncmds-1 pipes */
-    for(i = 0; i < ncmds-1; i++)
-        if(pipe(pipes[i]) == -1) {
-            close_pipelines(i, pipes);
-            free(pipes);
-            free(processes);
-            exit(126);
-        }
+    if(pipe(out_pipe) == -1) {
+        perror("Error in pipe():");
+        free(processes);
+        exit(126);
+    }
 
     /* run first command and redirect it's output to pipe */
     pid = fork();
     if(pid == -1) {
         perror("Error in fork():");
-        close_pipelines(ncmds-1, pipes);
-        free(pipes);
+        close_pipe(out_pipe);
         free(processes);
         exit(126);
     } else if(pid) {
         processes[0] = pid;
     } else {
-        dup2(pipes[0][1], 1);
-        close_pipelines(ncmds-1, pipes);
+        dup2(out_pipe[1], 1);
+        close_pipe(out_pipe);
         execvp(cmds[0][0], cmds[0]);
         perror("Error in execvp():");
         switch(errno) {
@@ -109,20 +105,30 @@ int pipeline(int ncmds, char*** cmds) {
 
     /* now run all commands from second to the one before last one */
     for(i = 1; i < ncmds-1; i++) {
+        copy_pipe(&in_pipe, &out_pipe); /* copy out_pipe to in_pipe */
+        if(pipe(out_pipe) == -1) {
+            perror("Error in pipe():");
+            close_pipe(in_pipe);
+            kill_processes(i, processes);
+            free(processes);
+            exit(126);
+        }
+
         pid = fork();
         if(pid == -1) {
             perror("Error in fork():");
-            close_pipelines(ncmds-1, pipes);
-            free(pipes);
+            close_pipe(in_pipe);
+            close_pipe(out_pipe);
             kill_processes(i, processes);
             free(processes);
             exit(126);
         } else if(pid) {
             processes[i] = pid;
         } else {
-            dup2(pipes[i-1][0], 0);
-            dup2(pipes[i][1], 1);
-            close_pipelines(ncmds-1, pipes);
+            dup2(in_pipe[0], 0);
+            dup2(out_pipe[1], 1);
+            close_pipe(in_pipe);
+            close_pipe(out_pipe);
             execvp(cmds[i][0], cmds[i]);
             perror("Error in execvp():");
             switch(errno) {
@@ -134,22 +140,26 @@ int pipeline(int ncmds, char*** cmds) {
                     _exit(126);
             }
         }
+
+        close_pipe(in_pipe);
     }
+
+    copy_pipe(&in_pipe, &out_pipe);
 
     /* run last command */
     pid = fork();
     if(pid == -1) {
         perror("Error in fork():");
-        close_pipelines(ncmds-1, pipes);
-        free(pipes);
+        close_pipe(in_pipe);
+        close_pipe(out_pipe);
         kill_processes(ncmds-1, processes);
         free(processes);
         exit(126);
     } else if(pid) {
         processes[ncmds-1] = pid;
     } else {
-        dup2(pipes[ncmds-2][0], 0);
-        close_pipelines(ncmds-1, pipes);
+        dup2(in_pipe[0], 0);
+        close_pipe(in_pipe);
         execvp(cmds[ncmds-1][0], cmds[ncmds-1]);
         perror("Error in execvp():");
         switch(errno) {
@@ -162,7 +172,7 @@ int pipeline(int ncmds, char*** cmds) {
         }
     }
 
-    close_pipelines(ncmds-1, pipes);
+    close_pipe(in_pipe);
 
     /* waiting for processes to end */ 
     for(i = 0; i < ncmds-1; i++)
@@ -171,7 +181,6 @@ int pipeline(int ncmds, char*** cmds) {
     /* waiting for last process, gather it's exit information */
     waitpid(processes[ncmds-1], &status, 0);
 
-    free(pipes);
     free(processes);
 
     if(WIFEXITED(status))
@@ -183,22 +192,17 @@ int pipeline(int ncmds, char*** cmds) {
 
 
 /* Utility functions */
-void close_pipelines(int n, pipe_t pipes[]) {
+void close_pipe(pipe_t p) {
     /*
-     *  Closes given amount of pipelines
-     *
-     * n is amount of pipes to close
-     * pipes is array of them
+     *  Closes given pipeline
      */
 
-    int i, k, ret;
+    int i, ret;
 
-    for(i = 0; i < n; i++) {
-        for(k = 0; k < 2; k++)
-            do {
-                ret = close(pipes[i][k]);
-            } while (ret == -1 && (errno == EINTR || errno == EIO));
-    }
+    for(i = 0; i < 2; i++)
+        do {
+            ret = close(p[i]);
+        } while (ret == -1 && (errno == EINTR || errno == EIO));
 }
 
 void kill_processes(int n, pid_t processes[]) {
@@ -220,5 +224,14 @@ void kill_processes(int n, pid_t processes[]) {
     /* killing everyone that left */
     for(i = 0; i < n; i++)
         kill(processes[i], 9);
+}
+
+void copy_pipe(pipe_t *dest, pipe_t *src) {
+    /*
+     *  Copies file descriptors from source pipes to destination
+     */
+
+    (*dest)[0] = (*src)[0];
+    (*dest)[1] = (*src)[1];
 }
 
