@@ -29,7 +29,4 @@ compile ir = do
     hClose handle
 
     rawSystem "gcc" ["-Wall", "-c", "routines.c", "-o", "routines.o"]
-    code <- rawSystem "gcc" ["-Wall", "routines.o", filename]
-    case code of
-        ExitSuccess -> removeFile filename
-        _ -> return ()
+    rawSystem "gcc" ["-Wall", "routines.o", filename]

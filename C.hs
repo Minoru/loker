@@ -1,47 +1,92 @@
 {-# LANGUAGE GADTs, EmptyDataDecls, ExistentialQuantification,
-    ScopedTypeVariables #-}
+    ScopedTypeVariables, MultiParamTypeClasses, FlexibleInstances,
+    TypeFamilies, FlexibleContexts, UndecidableInstances #-}
 module C
-    ( newScalarVar
-    , newConstStringArrayNT
-    , DeclM
-    , runDeclM
-    , CVariable
-    , varId
-    , varDesc
-    , CInt
-    , CType(..)
-    , CScalarType
-    , Routine(..)
-    , CDeclaration(..)
-    , CStringArrayNT
-    , CStatement(..)
-    )
 where
 import Control.Monad.State
 import Control.Arrow
-data CInt
-data CStringArrayNT -- NT stands for null-terminated
+import Text.Printf
+import Text.PrettyPrint
+import {-# SOURCE #-} qualified PrettyC
 
+data CInt
+data CChar
+
+data Array t
+data ArrayNT t -- NT stands for null-terminated
+
+type CString = ArrayNT CChar
+type CStringArrayNT = ArrayNT CString
+
+-- Since we generate only pointer types, the type can be separated from the
+-- identifier.
 class CType a where
     typeToString :: a -> String
 
 class CType a => CScalarType a
 
-instance CType CInt where typeToString _ = "int"
+class (CType (ElemType ar), CType ar) => CArrayType ar
+    where type ElemType ar
+
+instance CType CInt
+    where typeToString _ = "int"
+instance CType CChar
+    where typeToString _ = "char"
+instance CType t => CType (Array t)
+    where typeToString _ = typeToString (undefined :: t) ++ " *";
+instance CType t => CType (ArrayNT t)
+    where typeToString _ = typeToString (undefined :: t) ++ " *";
 
 instance CScalarType CInt
+instance CScalarType CChar
 
-data CVariable typ = CVariable
+instance CType t => CArrayType (Array   t)
+    where type ElemType (Array   t) = t
+instance CType t => CArrayType (ArrayNT t)
+    where type ElemType (ArrayNT t) = t
+
+data CVariable t = CVariable
     { varId :: Int
     , varDesc :: String
     }
     deriving Show
 
-data CDeclaration
-    -- integer variable
-    = forall t . CScalarType t => CDeclScalar (CVariable t)
-    -- constant null-terminated array of strings
-    | CDeclConstArrStringNT (CVariable CStringArrayNT) [String]
+class CType (ExprType e) => CExpr e where
+    type ExprType e
+
+    -- Since this is an open type (class), we need some way to print the
+    -- values
+    printExpr :: e -> Doc
+class CExpr e => LValue e
+
+instance CType t => CExpr (CVariable t)
+    where
+    type ExprType (CVariable t) = t
+    printExpr = PrettyC.cvar
+instance CType t => CExpr (CLiteral t)
+    where
+    type ExprType (CLiteral t) = t
+    printExpr = PrettyC.cliteral
+instance CType t => CExpr (Routine t)
+    where
+    type ExprType (Routine t) = t
+    printExpr = PrettyC.croutine
+instance (CExpr ar, CArrayType (ExprType ar)) => CExpr (CIndex ar)
+    where
+    type ExprType (CIndex ar) = ElemType (ExprType ar)
+    printExpr = PrettyC.cindex
+
+instance CType t => LValue (CVariable t)
+instance (LValue e, CArrayType (ExprType e)) => LValue (CIndex e)
+
+data CIndex ar = forall i . (CExpr i, ExprType i ~ CInt) => CIndex ar i
+
+data CLiteral t where
+    LiteralInt :: Int -> CLiteral CInt
+    LiteralString :: String -> CLiteral CString
+    LiteralNull :: CLiteral CString -- do we need NULL for anything except String?
+
+data CDeclaration = forall t . CType t => CDeclaration (CVariable t)
 
 data DeclState = DeclState
     -- list of accumulated declarations (reverse order)
@@ -56,18 +101,22 @@ initialDeclState = DeclState [] 0
 type DeclM a = State DeclState a
 
 data CStatement
-    = CallRoutine Routine
+    = forall e . CExpr e => CExprStatement e
     | CSequence [CStatement]
-    | NoOp
-    deriving Show
+      -- in the assignment, we do not enforce lvalue. Maybe we should.
+    | forall lhs rhs . (LValue lhs, CExpr rhs, ExprType lhs ~ ExprType rhs) => CAssignment lhs rhs
+    | forall what howMany . (LValue what, CArrayType (ExprType what), CExpr howMany, ExprType howMany ~ CInt) => AllocArray what howMany
 
-data Routine
-    = RunCommand
-        -- variable to write return status to
-        (CVariable CInt)
-        -- variable which holds argv
-        (CVariable CStringArrayNT)
-    deriving Show
+data Routine t where
+    RunCommand :: forall status argv .
+        (CExpr argv, ExprType argv ~ CStringArrayNT) =>
+        argv -> Routine CInt
+    Strncpy :: forall dest src size .
+        (LValue dest, CExpr src, CExpr size,
+        ExprType dest ~ CString, ExprType src ~ CString, ExprType size ~ CInt) =>
+        dest -> src -> size -> Routine dest
+    Strdup :: forall s . (CExpr s, ExprType s ~ CString) =>
+        s -> Routine CString
 
 newVarN :: DeclM Int
 newVarN = do
@@ -78,19 +127,11 @@ newVarN = do
 addDecl :: CDeclaration -> DeclM ()
 addDecl d = modify $ \s -> s { declarations = d : declarations s }
 
-newScalarVar :: forall t . CScalarType t =>
-                String -> DeclM (CVariable t)
-newScalarVar desc = do
+newVar :: forall t . CType t => String -> DeclM (CVariable t)
+newVar desc = do
     n <- newVarN
     let var = CVariable n desc :: CVariable t
-    addDecl $ CDeclScalar var
-    return var
-
-newConstStringArrayNT :: String -> [String] -> DeclM (CVariable CStringArrayNT)
-newConstStringArrayNT desc strs = do
-    n <- newVarN
-    let var = CVariable n desc
-    addDecl (CDeclConstArrStringNT var strs)
+    addDecl $ CDeclaration var
     return var
 
 runDeclM :: DeclM a -> (a, [CDeclaration])

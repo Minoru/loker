@@ -1,7 +1,7 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables,GADTs,FlexibleContexts #-}
 -- C pretty-printing
 
-module PrettyC (printC) where
+module PrettyC (printC,cvar,cliteral,cindex,croutine) where
 
 import Text.PrettyPrint
 import Data.List
@@ -22,41 +22,57 @@ commaList = hcat . intersperse (text ", ")
 braceBlock :: Doc -> Doc
 braceBlock d = lbrace $+$ indent d $+$ rbrace
 
-ctype :: forall t . CType t => CVariable t -> Doc
-ctype _ = text . typeToString $ (undefined :: t)
+ctype :: forall e . CExpr e => e -> Doc
+ctype _ = text . typeToString $ (undefined :: ExprType e)
+
+celemtype :: forall e . (CExpr e, CArrayType (ExprType e)) => e -> Doc
+celemtype _ = text . typeToString $ (undefined :: ElemType (ExprType e))
 
 cvar :: CVariable t -> Doc
 cvar v = text (varDesc v) <> int (varId v)
 
 cdecl :: CDeclaration -> Doc
-cdecl (CDeclScalar v) = ctype v <+> cvar v <> semi
-cdecl (CDeclConstArrStringNT v elements) =
-    text "const char*" <+> cvar v <> text "[]" <+> equals <+>
-        braces (strings <> comma <+> nullp)
-    where
-    strings = commaList $ map (doubleQuotes . text) elements
+cdecl (CDeclaration v) = ctype v <+> cvar v <> semi
+
+cliteral :: CLiteral t -> Doc
+cliteral (LiteralInt i) = int i
+cliteral (LiteralString s) = doubleQuotes $ text s
+cliteral LiteralNull = text "NULL"
+
+cindex :: CExpr ar => CIndex ar -> Doc
+cindex (CIndex ar i) = parens (printExpr ar) <> brackets (printExpr i)
 
 cdecls :: [CDeclaration] -> Doc
-cdecls ds = vcat (map cdecl $ ds) <> semi
+cdecls ds = vcat (map cdecl $ ds)
 
 cfuncall
-    :: Maybe Doc -- variable for the result
-    -> String    -- function name
-    -> [Doc] -- arguments
+    :: String -- function name
+    -> [Doc]  -- arguments
     -> Doc
-cfuncall mbVar funcName args =
-    let var = maybe empty (\v -> v <+> equals) mbVar
-    in var <+> text funcName <> parens (commaList args) <> semi
+cfuncall funcName args =
+    text funcName <> parens (commaList args)
 
 address :: Doc -> Doc
 address v = char '&' <> v
 
-croutine :: Routine -> Doc
-croutine (RunCommand status argv) =
-    cfuncall (Just $ cvar status) "exec_command" [cvar argv]
+croutine :: Routine t -> Doc
+croutine (RunCommand argv) =
+    cfuncall "exec_command" [printExpr argv]
+croutine (Strncpy dest src n) =
+    cfuncall "strncpy" [printExpr dest, printExpr src, printExpr n]
+croutine (Strdup s) =
+    cfuncall "strdup" [printExpr s]
 
 cstatement :: CStatement -> Doc
-cstatement (CallRoutine r) = croutine r
+cstatement (CExprStatement r) = printExpr r <> semi
+cstatement (CSequence ss) = vcat $ map cstatement ss
+cstatement (CAssignment lhs rhs) =
+    printExpr lhs <+> equals <+> printExpr rhs <> semi
+cstatement (AllocArray what howMany) =
+    printExpr what <+> equals <+> cfuncall "malloc" [size] <> semi
+    where
+    size = parens (printExpr howMany) <+> char '*' <+>
+        cfuncall "sizeof"  [celemtype what]
 
 include, includeLocal :: String -> Doc
 (include, includeLocal) = (includeSep '<' '>', includeSep '"' '"')
@@ -69,7 +85,9 @@ creturn c = text "return" <+> c <> semi
 
 program :: [CDeclaration] -> CStatement -> CVariable CInt -> Doc
 program decls stmt status = vcat
-    [ includeLocal "routines.h"
+    [ include "stdlib.h"
+    , include "string.h"
+    , includeLocal "routines.h"
     , emptyLine
     , cdecls decls
     , emptyLine
