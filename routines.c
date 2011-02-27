@@ -9,7 +9,7 @@
 
 #include "routines.h"
 
-int exec_command(const char* cmd[]) {
+int exec_command(char** cmd) {
     /*
      *  Executes specified command
      *
