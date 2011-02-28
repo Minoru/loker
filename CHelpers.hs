@@ -2,12 +2,6 @@
 module CHelpers where
 import C
 
-int = LiteralInt
-
-string = LiteralString
-
-_NULL = LiteralNull
-
 infix 4 !
 (!) :: (ExprType i ~ CInt, CExpr i) => ar -> i -> CIndex ar
 (!) = CIndex

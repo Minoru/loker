@@ -1,6 +1,6 @@
 {-# LANGUAGE GADTs, EmptyDataDecls, ExistentialQuantification,
     ScopedTypeVariables, MultiParamTypeClasses, FlexibleInstances,
-    TypeFamilies, FlexibleContexts, UndecidableInstances #-}
+    TypeFamilies, FlexibleContexts, UndecidableInstances, TypeSynonymInstances #-}
 module C
 where
 import Control.Monad.State
@@ -63,10 +63,6 @@ instance CType t => CExpr (CVariable t)
     where
     type ExprType (CVariable t) = t
     printExpr = PrettyC.cvar
-instance CType t => CExpr (CLiteral t)
-    where
-    type ExprType (CLiteral t) = t
-    printExpr = PrettyC.cliteral
 instance CType t => CExpr (Routine t)
     where
     type ExprType (Routine t) = t
@@ -75,16 +71,25 @@ instance (CExpr ar, CArrayType (ExprType ar)) => CExpr (CIndex ar)
     where
     type ExprType (CIndex ar) = ElemType (ExprType ar)
     printExpr = PrettyC.cindex
+instance CExpr String -- string literal
+    where
+    type ExprType String = CString
+    printExpr = PrettyC.stringLiteral
+instance CExpr Int -- integer literal
+    where
+    type ExprType Int = CInt
+    printExpr = PrettyC.intLiteral
+instance CExpr NULL
+    where
+    type ExprType NULL = CString -- do we need NULL for anything else?
+    printExpr _ = PrettyC.nullLiteral
 
 instance CType t => LValue (CVariable t)
 instance (LValue e, CArrayType (ExprType e)) => LValue (CIndex e)
 
 data CIndex ar = forall i . (CExpr i, ExprType i ~ CInt) => CIndex ar i
 
-data CLiteral t where
-    LiteralInt :: Int -> CLiteral CInt
-    LiteralString :: String -> CLiteral CString
-    LiteralNull :: CLiteral CString -- do we need NULL for anything except String?
+data NULL = NULL
 
 data CDeclaration = forall t . CType t => CDeclaration (CVariable t)
 

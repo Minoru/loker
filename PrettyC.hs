@@ -1,7 +1,15 @@
 {-# LANGUAGE ScopedTypeVariables,GADTs,FlexibleContexts #-}
 -- C pretty-printing
 
-module PrettyC (printC,cvar,cliteral,cindex,croutine) where
+module PrettyC
+    ( printC
+    , cvar
+    , cindex
+    , croutine
+    , intLiteral
+    , stringLiteral
+    , nullLiteral
+    ) where
 
 import Text.PrettyPrint
 import Data.List
@@ -34,10 +42,12 @@ cvar v = text (varDesc v) <> int (varId v)
 cdecl :: CDeclaration -> Doc
 cdecl (CDeclaration v) = ctype v <+> cvar v <> semi
 
-cliteral :: CLiteral t -> Doc
-cliteral (LiteralInt i) = int i
-cliteral (LiteralString s) = doubleQuotes $ text s
-cliteral LiteralNull = text "NULL"
+intLiteral :: Int -> Doc
+intLiteral = int
+stringLiteral :: String -> Doc
+stringLiteral = doubleQuotes . text
+nullLiteral :: Doc
+nullLiteral = text "NULL"
 
 cindex :: CExpr ar => CIndex ar -> Doc
 cindex (CIndex ar i) = parens (printExpr ar) <> brackets (printExpr i)

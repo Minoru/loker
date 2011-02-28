@@ -14,10 +14,10 @@ translateStatement (Command (isArrayConstant -> Just argv)) = do
     argv_var <- newVar "argv"
     -- initialize argv
     let program = CSequence $
-            [ AllocArray argv_var (LiteralInt $ length argv + 1) ] ++
-            ( let init i arg = (argv_var ! int i) .= Strdup (string arg)
+            [ AllocArray argv_var (length argv + 1) ] ++
+            ( let init i arg = (argv_var ! (i::Int)) .= Strdup arg
               in zipWith init [0..] argv ) ++
-            [ (argv_var ! int (length argv)) .= _NULL
+            [ (argv_var ! length argv) .= NULL
             , status .= RunCommand argv_var
             ]
     return $ (status, program)
