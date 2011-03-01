@@ -93,18 +93,6 @@ data NULL = NULL
 
 data CDeclaration = forall t . CType t => CDeclaration (CVariable t)
 
-data DeclState = DeclState
-    -- list of accumulated declarations (reverse order)
-    { declarations :: [CDeclaration]
-    -- number used to form the next variable name
-    , nextVarN     :: !Int
-    }
-
-initialDeclState :: DeclState
-initialDeclState = DeclState [] 0
-
-type DeclM a = State DeclState a
-
 data CStatement
     = forall e . CExpr e => CExprStatement e
     | CSequence [CStatement]
@@ -122,24 +110,3 @@ data Routine t where
         dest -> src -> size -> Routine dest
     Strdup :: forall s . (CExpr s, ExprType s ~ CString) =>
         s -> Routine CString
-
-newVarN :: DeclM Int
-newVarN = do
-    n <- gets nextVarN
-    modify $ \s -> s { nextVarN = n + 1 }
-    return n
-
-addDecl :: CDeclaration -> DeclM ()
-addDecl d = modify $ \s -> s { declarations = d : declarations s }
-
-newVar :: forall t . CType t => String -> DeclM (CVariable t)
-newVar desc = do
-    n <- newVarN
-    let var = CVariable n desc :: CVariable t
-    addDecl $ CDeclaration var
-    return var
-
-runDeclM :: DeclM a -> (a, [CDeclaration])
-runDeclM m =
-    second (reverse . declarations) $
-        runState m initialDeclState

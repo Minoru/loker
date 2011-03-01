@@ -1,14 +1,16 @@
 {-# LANGUAGE ViewPatterns #-}
 module IR2C ( ir2c )
 where
+import qualified Data.Map as Map
 import C
 import CHelpers
 import IR
+import CodeGenMonad
 
 ir2c :: Statement -> ((CVariable CInt, CStatement), [CDeclaration])
-ir2c = runDeclM . translateStatement
+ir2c = flip runCGM Map.empty . translateStatement
 
-translateStatement :: Statement -> DeclM (CVariable CInt, CStatement)
+translateStatement :: Statement -> CGM (CVariable CInt, CStatement)
 translateStatement (Command (isArrayConstant -> Just argv)) = do
     status <- newVar "status"
     argv_var <- newVar "argv"
