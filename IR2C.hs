@@ -9,6 +9,7 @@
 module IR2C ( ir2c )
 where
 import qualified Data.Map as Map
+import Control.Monad
 import C
 import CHelpers
 import IR
@@ -25,7 +26,7 @@ translateStatement (Command (isArrayConstant -> Just argv)) = do
     -- initialize argv
     allocArray argv_var (length argv + 1)
     let init i arg = (argv_var ! (i::Int)) .= Strdup arg
-    sequence $ zipWith init [0..] argv
+    zipWithM init [0..] argv
     (argv_var ! length argv) .= NULL
     status .= RunCommand argv_var
     return status
