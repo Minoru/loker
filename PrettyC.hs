@@ -13,6 +13,7 @@ module PrettyC
 
 import Text.PrettyPrint
 import Data.List
+import Data.Function
 
 import C
 
@@ -75,7 +76,7 @@ croutine (Strdup s) =
 
 cstatement :: CStatement -> Doc
 cstatement (CExprStatement r) = printExpr r <> semi
-cstatement (CSequence ss) = vcat $ map cstatement ss
+cstatement (CSeq a b) = (($+$) `on` cstatement) a b
 cstatement (CAssignment lhs rhs) =
     printExpr lhs <+> equals <+> printExpr rhs <> semi
 cstatement (AllocArray what howMany) =
@@ -83,6 +84,7 @@ cstatement (AllocArray what howMany) =
     where
     size = parens (printExpr howMany) <+> char '*' <+>
         cfuncall "sizeof"  [celemtype what]
+cstatement NoOp = empty
 
 include, includeLocal :: String -> Doc
 (include, includeLocal) = (includeSep '<' '>', includeSep '"' '"')
@@ -111,5 +113,5 @@ program decls stmt status = vcat
             emptyLine $+$
             creturn (cvar status))
 
-printC :: ((CVariable CInt, CStatement), [CDeclaration]) -> String
-printC ((status, stmt), decls) = render $ program decls stmt status
+printC :: (CVariable CInt, [CDeclaration], CStatement) -> String
+printC (status, decls, stmt) = render $ program decls stmt status

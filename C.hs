@@ -95,10 +95,11 @@ data CDeclaration = forall t . CType t => CDeclaration (CVariable t)
 
 data CStatement
     = forall e . CExpr e => CExprStatement e
-    | CSequence [CStatement]
+    | CSeq CStatement CStatement
       -- in the assignment, we do not enforce lvalue. Maybe we should.
     | forall lhs rhs . (LValue lhs, CExpr rhs, ExprType lhs ~ ExprType rhs) => CAssignment lhs rhs
     | forall what howMany . (LValue what, CArrayType (ExprType what), CExpr howMany, ExprType howMany ~ CInt) => AllocArray what howMany
+    | NoOp
 
 data Routine t where
     RunCommand :: forall status argv .

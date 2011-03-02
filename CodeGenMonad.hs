@@ -9,6 +9,8 @@ module CodeGenMonad
     , runCGM
     , newVar
     , shellVarToID
+    , addCode
+    , extractCode
     ) where
 
 import qualified Data.Map as Map
@@ -49,10 +51,30 @@ instance Monoid W where
 -- There's no direct accessor to Writer; it's affected by 'newVar', which
 -- also modifies the State
 
--- The State monad is used to generate fresh IDs for C variables
+-- The State monad is used to generate fresh IDs for C variables and to hold
+-- accumulated C code. (We keep C code in the State rather than in
+-- the Writer so that we can extract it e.g. to form an 'if' operator.)
 data S = S
-    { nextCVarId :: !Int }
-initialS = S { nextCVarId = 0 }
+    { nextCVarId :: !Int
+    , code :: CStatement
+    }
+initialS = S { nextCVarId = 0, code = NoOp }
+
+-- Add a statement to the list
+addCode :: CStatement -> CGM ()
+addCode stmt = CGM $
+    modify $ \s -> s { code = code s `CSeq` stmt }
+
+-- This has two effects:
+--
+-- 1. Return accumulated code
+--
+-- 2. Clear the accumulated code in the State monad
+extractCode :: CGM CStatement
+extractCode = CGM $ do
+    s <- get
+    put $ s { code = NoOp }
+    return $ code s
 
 newVarN :: CGM Int
 newVarN = CGM $ do
@@ -70,9 +92,9 @@ newVar desc = CGM $ do
     unCGM $ addDecl $ CDeclaration var
     return var
 
-runCGM :: CGM a -> Map.Map String Int -> (a, [CDeclaration])
+runCGM :: CGM a -> Map.Map String Int -> (a, [CDeclaration], CStatement)
 runCGM m varMap =
     let (a,s,w) = runRWS (unCGM m) r initialS
-    in (a, declarations w)
+    in (a, declarations w, code s)
     where
     r = R { shellVarsToIDs = varMap }
