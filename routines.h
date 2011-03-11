@@ -3,7 +3,7 @@
 
 #include <stddef.h> /* NULL */
 
-int exec_command(const char**);
+int exec_command(char **);
 int pipeline(int, char***);
 
 #endif

@@ -12,7 +12,7 @@
 
 typedef int pipe_t[2];
 
-int exec_command(const char* cmd[]) {
+int exec_command(char** cmd) {
     /*
      *  Executes specified command
      *

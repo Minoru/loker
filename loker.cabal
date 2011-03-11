@@ -18,3 +18,13 @@ Executable loker
                  , base == 4.*
                  , mtl == 1.1.*
     main-is: loker.hs
+Executable compiler
+    build-depends: parsec == 3.1.*
+                 , containers == 0.3.*
+                 , base == 4.*
+                 , mtl == 1.1.*
+                 , pretty == 1.0.*
+                 , directory == 1.0.*
+                 , process == 1.0.*
+                 , unix == 2.4.*
+    main-is: compiler.hs
