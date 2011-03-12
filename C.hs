@@ -57,6 +57,16 @@ class CType (ExprType e) => CExpr e where
     -- Since this is an open type (class), we need some way to print the
     -- values
     printExpr :: e -> Doc
+
+-- Existential wrapper for expressions
+-- This is needed when we want to return an expression from some function
+data CExpression t = forall e. (CExpr e, ExprType e ~ t) => CExpression e
+
+instance CType t => CExpr (CExpression t)
+    where
+    type ExprType (CExpression t) = t
+    printExpr (CExpression e) = printExpr e
+
 class CExpr e => LValue e
 
 instance CType t => CExpr (CVariable t)

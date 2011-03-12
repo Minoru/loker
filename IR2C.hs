@@ -20,14 +20,34 @@ ir2c :: Statement -> (CVariable CInt, [CDeclaration], CStatement)
 ir2c = flip runCGM Map.empty . translateStatement
 
 translateStatement :: Statement -> CGM (CVariable CInt)
-translateStatement (Command (isArrayConstant -> Just argv)) = do
+translateStatement (Command argv) = do
     status <- newVar "status"
-    argv_var <- newVar "argv"
-    -- initialize argv
-    allocArray argv_var (length argv + 1)
-    let init i arg = (argv_var ! (i::Int)) .= Strdup arg
-    zipWithM init [0..] argv
-    (argv_var ! length argv) .= NULL
-    status .= RunCommand argv_var
+    (argv', _) <- translateArray argv
+    status .= RunCommand argv'
     return status
 translateStatement _ = error "translateStatement: unimplemented"
+
+-- The monadic result implicitly contains the statements to perform the
+-- initialization if necessary
+translateExpression :: Expression -> CGM (CExpression CString)
+translateExpression (Const s) = return $ CExpression s -- string literal
+
+-- This returns two C expressions: the array itself (NULL-terminated) and its
+-- length.
+--
+-- Depending on the situation, we might not need the NULL terminator or the
+-- length; so we may optimize generated code in the future. But now we don't
+-- bother.
+--
+-- Also the monadic result implicitly contains the statements to perform the
+-- initialization if necessary.
+translateArray :: IR.Array -> CGM (CExpression CStringArrayNT, CExpression CInt)
+translateArray (isArrayPlain -> Just exprs) = do
+    let numExprs = length exprs
+    arr <- newVar "array" :: CGM (CVariable CStringArrayNT)
+    allocArray arr $ numExprs + 1
+    let init i expr = arr ! (i::Int) .= Strdup expr
+    translatedExprs <- mapM translateExpression exprs
+    zipWithM init [0..] translatedExprs
+    arr ! numExprs .= NULL
+    return (CExpression arr, CExpression numExprs)
