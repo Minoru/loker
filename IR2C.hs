@@ -25,8 +25,8 @@ translateStatement (Command (isArrayConstant -> Just argv)) = do
     argv_var <- newVar "argv"
     -- initialize argv
     allocArray argv_var (length argv + 1)
-    let init i arg = (argv_var ! (i::Int)) .= Strdup arg
-    zipWithM init [0..] argv
+    let initialize i arg = (argv_var ! (i::Int)) .= Strdup arg
+    zipWithM initialize [0..] argv
     (argv_var ! length argv) .= NULL
     status .= RunCommand argv_var
     return status
