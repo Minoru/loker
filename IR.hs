@@ -134,6 +134,16 @@ translateSimpleCommand (AST.SimpleCommand as rs ws) =
                 else ApplyRedirections redirections cmdWithAssignments
     in cmdWithAssignmentsAndRedirections
 
+translateCompoundList :: AST.CompoundList -> Statement
+translateCompoundList ((AST.First (AST.Pipeline AST.Straight cmds), _):_) =
+   Pipeline (helper [] cmds)
+   where
+      helper :: [Statement] -> [AST.Command] -> [Statement]
+      helper acc [] = acc
+      helper acc ((AST.ComSimple simpleCmd):xs) = helper (acc ++ [translateSimpleCommand simpleCmd]) xs
+      helper _   (x:xs) = error $ "helper in translateCompoundList: unimplemented for " ++ show x
+translateCompoundList x = error $ "translateCompoundList: unimplemented for " ++ show x
+
 ----------------------------------------
 -- Simplifications of IR tree
 

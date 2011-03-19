@@ -18,10 +18,10 @@ main = do
     (str, name) <- case args of
         f:_ -> (,f) <$> readFile f
         [] -> (,"-") <$> getContents
-    let ast = parse simpleCommand name str
+    let ast = parse program name str
     case ast of
         Left err -> do print err; exitFailure
-        Right ast -> compile $ simplifyStatement $ translateSimpleCommand ast
+        Right ast -> compile $ simplifyStatement $ translateCompoundList ast
 
 compile ir = do
     (filename, handle) <- openTempFile "." "prog.c"
