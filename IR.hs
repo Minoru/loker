@@ -1,4 +1,5 @@
 module IR where
+import Control.Monad
 import qualified AST
 
 ----------------------------------------
@@ -224,11 +225,15 @@ simplifyRedirection :: Redirection -> Redirection
 simplifyRedirection (Redirection fd op expr) =
     Redirection fd op $ fst $ simplifyExpression expr
 
+-- Array is plain if we can translate it to a list of
+-- Expressions (in particular, we can statically determine its length)
+isArrayPlain :: Array -> Maybe [Expression]
+isArrayPlain (ConcatA ars) = fmap concat $ mapM isArrayPlain ars
+isArrayPlain (Field expr) = Just [expr] -- fmap (:[]) $ isExprConstant expr
+isArrayPlain _ = Nothing
 
-isArrayConstant :: Array -> Maybe ([String])
-isArrayConstant (ConcatA ars) = fmap concat $ mapM isArrayConstant ars
-isArrayConstant (Field expr) = fmap (:[]) $ isExprConstant expr
-isArrayConstant _ = Nothing
+isArrayConstant :: Array -> Maybe [String]
+isArrayConstant = mapM isExprConstant <=< isArrayPlain
 
 isExprConstant :: Expression -> Maybe String
 isExprConstant (ConcatE exprs) = fmap concat $ mapM isExprConstant exprs
