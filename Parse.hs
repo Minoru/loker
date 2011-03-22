@@ -552,6 +552,7 @@ caseClause = do
             Right (pat,True) -> (pat:) <$> case_list
             Right (pat,False) -> do theReservedWord "esac"; return [pat]
 
+program :: Parser CompoundList
 program = do
     l <- list
     eof

@@ -89,9 +89,9 @@ instance CExpr Int -- integer literal
     where
     type ExprType Int = CInt
     printExpr = PrettyC.intLiteral
-instance CExpr NULL
+instance CType t => CExpr (NULL t)
     where
-    type ExprType NULL = CString -- do we need NULL for anything else?
+    type ExprType (NULL t) = t -- do we need NULL for anything else?
     printExpr _ = PrettyC.nullLiteral
 
 instance CType t => LValue (CVariable t)
@@ -99,7 +99,7 @@ instance (LValue e, CArrayType (ExprType e)) => LValue (CIndex e)
 
 data CIndex ar = forall i . (CExpr i, ExprType i ~ CInt) => CIndex ar i
 
-data NULL = NULL
+data NULL t = NULL
 
 data CDeclaration = forall t . CType t => CDeclaration (CVariable t)
 
@@ -115,6 +115,10 @@ data Routine t where
     RunCommand :: forall status argv .
         (CExpr argv, ExprType argv ~ CStringArrayNT) =>
         argv -> Routine CInt
+    PipelineCmds :: forall ncmds cmds .
+        (CExpr ncmds, CExpr cmds,
+         ExprType ncmds ~ CInt, ExprType cmds ~ (ArrayNT CStringArrayNT)) =>
+        ncmds -> cmds -> Routine CInt
     Strncpy :: forall dest src size .
         (LValue dest, CExpr src, CExpr size,
         ExprType dest ~ CString, ExprType src ~ CString, ExprType size ~ CInt) =>

@@ -25,7 +25,22 @@ translateStatement (Command argv) = do
     (argv', _) <- translateArray argv
     status .= RunCommand argv'
     return status
-translateStatement _ = error "translateStatement: unimplemented"
+translateStatement (Pipeline commands) = do
+    status <- newVar "status"
+    cmds_var <- newVar "cmds"
+    allocArray cmds_var (length commands + 1)
+    let
+        addCmd :: Int -> Statement -> CGM (CExpression CStringArrayNT)
+        addCmd i (Command arg) = do
+          (x, _) <- translateArray arg
+          cmds_var ! i .= x
+          return x
+        addCmd _ x = error $ "addCmd in translateStatement for Pipeline: unimplemented for " ++ show x
+    zipWithM addCmd [0..] commands
+    cmds_var ! (length commands) .= NULL
+    status .= PipelineCmds (length commands) cmds_var
+    return status
+translateStatement x = error $ "translateStatement: unimplemented for " ++ show x
 
 -- The monadic result implicitly contains the statements to perform the
 -- initialization if necessary

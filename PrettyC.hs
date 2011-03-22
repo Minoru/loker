@@ -69,6 +69,8 @@ address v = char '&' <> v
 croutine :: Routine t -> Doc
 croutine (RunCommand argv) =
     cfuncall "exec_command" [printExpr argv]
+croutine (PipelineCmds ncmds cmds) =
+    cfuncall "pipeline" [printExpr ncmds, printExpr cmds]
 croutine (Strncpy dest src n) =
     cfuncall "strncpy" [printExpr dest, printExpr src, printExpr n]
 croutine (Strdup s) =
