@@ -21,21 +21,23 @@ int exec_command(char** cmd) {
      *  fork() or execvp() failed
      */
 
+    int ret = 0;
+
     pid_t pid = fork();
     if(pid == -1) {
         perror("Error in fork()");
-        return 126;
+        ret = 126;
     }
 
     if(pid) {
         int retval;
         waitpid(pid, &retval, 0);
         if(WIFEXITED(retval)) {
-            return WEXITSTATUS(retval);
+            ret = WEXITSTATUS(retval);
         } else {
             /* killed by signal
              * return 128+number of signal that teminated our child */
-            return 128 + WTERMSIG(retval);
+            ret = 128 + WTERMSIG(retval);
         }
     } else {
         execvp(cmd[0], (char * const*)cmd);
@@ -50,7 +52,7 @@ int exec_command(char** cmd) {
         }
     }
 
-    return 0;
+    return ret;
 }
 
 void copy_pipe(pipe_t*, pipe_t*);
