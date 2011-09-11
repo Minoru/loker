@@ -25,6 +25,17 @@ translateStatement (Command argv) = do
     (argv', _) <- translateArray argv
     status .= RunCommand argv'
     return status
+translateStatement (Sequence cmds) = runCmds cmds
+    where
+      runCmds :: [Statement] -> CGM (CVariable CInt)
+      runCmds (x:xs)
+        | null xs = do
+            status <- newVar "status"
+            (status .=) =<< translateStatement x
+            return status
+        | otherwise = do
+            translateStatement x
+            runCmds xs
 translateStatement (Pipeline commands) = do
     status <- newVar "status"
     cmds_var <- newVar "cmds"
