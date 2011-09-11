@@ -11,6 +11,8 @@ data Statement
     | Subshell Statement
     | ApplyRedirections [Redirection] Statement
     | Pipeline [Statement]
+    | And Statement Statement
+    | Or  Statement Statement
 
     -- leaves
     | Command
@@ -135,6 +137,11 @@ translateSimpleCommand (AST.SimpleCommand as rs ws) =
                 else ApplyRedirections redirections cmdWithAssignments
     in cmdWithAssignmentsAndRedirections
 
+translateAndOrList :: AST.AndOrList -> Statement
+translateAndOrList (AST.First x) = translatePipeline x
+translateAndOrList (AST.And x l) = And (translatePipeline x) (translateAndOrList l)
+translateAndOrList (AST.Or x l) = Or  (translatePipeline x) (translateAndOrList l)
+
 translateCompoundList :: AST.CompoundList -> Statement
 translateCompoundList ((AST.First (AST.Pipeline AST.Straight cmds), _):_) =
    Pipeline (helper [] cmds)
@@ -162,6 +169,8 @@ simplifyStatement (ApplyRedirections r s) =
 simplifyStatement (Pipeline [s]) = simplifyStatement s
 simplifyStatement (Pipeline ss) = Pipeline $ map simplifyStatement ss
 simplifyStatement (Subshell cmd) = Subshell $ simplifyStatement cmd
+simplifyStatement (And cmd cmds) = And (simplifyStatement cmd) (simplifyStatement cmds)
+simplifyStatement (Or  cmd cmds) = Or  (simplifyStatement cmd) (simplifyStatement cmds)
 
 simplifyArray :: Array -> Array
 simplifyArray (Split e) =
