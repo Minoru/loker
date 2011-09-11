@@ -142,15 +142,27 @@ translateAndOrList (AST.First x) = translatePipeline x
 translateAndOrList (AST.And x l) = And (translatePipeline x) (translateAndOrList l)
 translateAndOrList (AST.Or x l) = Or  (translatePipeline x) (translateAndOrList l)
 
+translatePipeline :: AST.Pipeline -> Statement
+translatePipeline (AST.Pipeline AST.Straight cmds) =
+    Pipeline (helper [] cmds)
+    where
+        helper :: [Statement] -> [AST.Command] -> [Statement]
+        helper acc [] = acc
+        helper acc ((AST.ComSimple simpleCmd):xs) = helper (acc ++ [translateSimpleCommand simpleCmd]) xs
+        helper _   (x:xs) = error $ "helper in translatePipeline: unimplemented for " ++ show x
+translatePipeline x = error $ "translatePipeline: unimplemented for " ++ show x
+
 translateCompoundList :: AST.CompoundList -> Statement
-translateCompoundList ((AST.First (AST.Pipeline AST.Straight cmds), _):_) =
-   Pipeline (helper [] cmds)
-   where
-      helper :: [Statement] -> [AST.Command] -> [Statement]
-      helper acc [] = acc
-      helper acc ((AST.ComSimple simpleCmd):xs) = helper (acc ++ [translateSimpleCommand simpleCmd]) xs
-      helper _   (x:xs) = error $ "helper in translateCompoundList: unimplemented for " ++ show x
-translateCompoundList x = error $ "translateCompoundList: unimplemented for " ++ show x
+translateCompoundList x =
+    Sequence (helper [] x)
+    where
+        helper :: [Statement] -> AST.CompoundList -> [Statement]
+        helper acc [] = acc
+        helper acc ((list, mode):xs) =
+            if mode == AST.Seq
+              then helper (acc ++ [cmd]) xs
+              else helper (acc ++ [Subshell cmd]) xs
+            where cmd = Sequence [translateAndOrList list]
 
 ----------------------------------------
 -- Simplifications of IR tree
