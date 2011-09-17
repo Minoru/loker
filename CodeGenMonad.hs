@@ -8,6 +8,7 @@ module CodeGenMonad
     ( CGM
     , runCGM
     , newVar
+    , newLabel
     , shellVarToID
     , addCode
     , extractCode
@@ -56,9 +57,14 @@ instance Monoid W where
 -- the Writer so that we can extract it e.g. to form an 'if' operator.)
 data S = S
     { nextCVarId :: !Int
+    , nextCLabelId :: !Int
     , code :: CStatement
     }
-initialS = S { nextCVarId = 0, code = NoOp }
+initialS = S
+    { nextCVarId = 0
+    , nextCLabelId = 0
+    , code = NoOp
+    }
 
 -- Add a statement to the list
 addCode :: CStatement -> CGM ()
@@ -82,6 +88,12 @@ newVarN = CGM $ do
     modify $ \s -> s { nextCVarId = n + 1 }
     return n
 
+newLabelN :: CGM Int
+newLabelN = CGM $ do
+    n <- gets nextCLabelId
+    modify $ \s -> s { nextCLabelId = n + 1 }
+    return n
+
 addDecl :: CDeclaration -> CGM ()
 addDecl d = CGM $ tell $ mempty { declarations = [d] }
 
@@ -91,6 +103,12 @@ newVar desc = CGM $ do
     let var = CVariable n desc :: CVariable t
     unCGM $ addDecl $ CDeclaration var
     return var
+
+newLabel :: String -> CGM (CLabel)
+newLabel desc = CGM $ do
+    n <- unCGM newLabelN
+    let label = CLabel n desc
+    return label
 
 runCGM :: CGM a -> Map.Map String Int -> (a, [CDeclaration], CStatement)
 runCGM m varMap =

@@ -51,6 +51,12 @@ data CVariable t = CVariable
     }
     deriving Show
 
+data CLabel = CLabel
+    { labelId :: Int,
+      labelDesc :: String
+    }
+    deriving Show
+
 class CType (ExprType e) => CExpr e where
     type ExprType e
 
