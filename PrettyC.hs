@@ -71,6 +71,12 @@ croutine (RunCommand argv) =
     cfuncall "exec_command" [printExpr argv]
 croutine (PipelineCmds ncmds cmds) =
     cfuncall "pipeline" [printExpr ncmds, printExpr cmds]
+croutine (AND cmd1 status1 label cmd2 retval) =
+    cfuncall "AND" [printExpr cmd1, printExpr status1, printExpr label,
+                    printExpr cmd2, printExpr retval]
+croutine (OR cmd1 status1 label cmd2 retval) =
+    cfuncall "OR" [printExpr cmd1, printExpr status1, printExpr label,
+                   printExpr cmd2, printExpr retval]
 croutine (Strncpy dest src n) =
     cfuncall "strncpy" [printExpr dest, printExpr src, printExpr n]
 croutine (Strdup s) =

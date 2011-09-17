@@ -9,6 +9,7 @@ import Text.Printf
 import Text.PrettyPrint
 import {-# SOURCE #-} qualified PrettyC
 
+data CVoid
 data CInt
 data CChar
 
@@ -28,6 +29,8 @@ class CType a => CScalarType a
 class (CType (ElemType ar), CType ar) => CArrayType ar
     where type ElemType ar
 
+instance CType CVoid
+    where typeToString _ = "void"
 instance CType CInt
     where typeToString _ = "int"
 instance CType CChar
@@ -125,6 +128,16 @@ data Routine t where
         (CExpr ncmds, CExpr cmds,
          ExprType ncmds ~ CInt, ExprType cmds ~ (ArrayNT CStringArrayNT)) =>
         ncmds -> cmds -> Routine CInt
+    AND :: forall cmd1 status label cmd2 retval .
+        (CExpr cmd1, CExpr status, CExpr label, CExpr cmd2, CExpr retval,
+         ExprType status ~ CInt, ExprType label ~ CLabel,
+         ExprType retval ~ CInt) =>
+       cmd1 -> status -> label -> cmd2 -> retval -> Routine CVoid
+    OR :: forall cmd1 status label cmd2 retval .
+        (CExpr cmd1, CExpr status, CExpr label, CExpr cmd2, CExpr retval,
+         ExprType status ~ CInt, ExprType label ~ CLabel,
+         ExprType retval ~ CInt) =>
+       cmd1 -> status -> label -> cmd2 -> retval -> Routine CVoid
     Strncpy :: forall dest src size .
         (LValue dest, CExpr src, CExpr size,
         ExprType dest ~ CString, ExprType src ~ CString, ExprType size ~ CInt) =>
